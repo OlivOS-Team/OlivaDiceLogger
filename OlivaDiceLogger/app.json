@@ -1,0 +1,14 @@
+{
+    "name" : "OlivaDice日志模块",
+    "author" : "lunzhiPenxil",
+    "namespace" : "OlivaDiceLogger",
+    "message_mode" : "old_string",
+    "priority" : 30030,
+    "support" : [
+        {
+            "sdk" : "all",
+            "platform" : "all",
+            "model" : "all"
+        }
+    ]
+}
