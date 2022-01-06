@@ -38,6 +38,11 @@ def add_logger_func(target_func):
 
 def loggerEntry(event, funcType, sender, dectData, message):
     [host_id, group_id, user_id] = dectData
+    tmp_hagID = None
+    if host_id != None and group_id != None:
+        tmp_hagID = '%s|%s' % (str(host_id), str(group_id))
+    elif group_id != None:
+        tmp_hagID = str(group_id)
     tmp_name = 'N/A'
     tmp_id = -1
     if 'name' in sender:
@@ -51,7 +56,7 @@ def loggerEntry(event, funcType, sender, dectData, message):
         'send_group'
     ]:
         if OlivaDiceCore.userConfig.getUserConfigByKey(
-            userId = group_id,
+            userId = tmp_hagID,
             userType = 'group',
             platform = event.platform['platform'],
             userConfigKey = 'logEnable',
@@ -73,7 +78,7 @@ def loggerEntry(event, funcType, sender, dectData, message):
             }
             log_str = json.dumps(log_dict, ensure_ascii = False)
             tmp_logName = OlivaDiceCore.userConfig.getUserConfigByKey(
-                userId = group_id,
+                userId = tmp_hagID,
                 userType = 'group',
                 platform = event.platform['platform'],
                 userConfigKey = 'logNowName',

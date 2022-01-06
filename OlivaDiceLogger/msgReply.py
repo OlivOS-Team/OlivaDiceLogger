@@ -82,17 +82,25 @@ def unity_reply(plugin_event, Proc):
         OlivaDiceCore.crossHook.dictHookList['prefix']
     )
     if flag_is_command:
+        tmp_hagID = None
         if plugin_event.plugin_info['func_type'] == 'group_message':
             if plugin_event.data.host_id != None:
                 flag_is_from_host = True
             flag_is_from_group = True
         elif plugin_event.plugin_info['func_type'] == 'private_message':
             flag_is_from_group = False
+        if flag_is_from_host and flag_is_from_group:
+            tmp_hagID = '%s|%s' % (str(plugin_event.data.host_id), str(plugin_event.data.group_id))
+        elif flag_is_from_group:
+            tmp_hagID = str(plugin_event.data.group_id)
         if flag_is_from_group:
             if 'role' in plugin_event.data.sender:
                 flag_is_from_group_have_admin = True
                 if plugin_event.data.sender['role'] in ['owner', 'admin']:
                     flag_is_from_group_admin = True
+                elif plugin_event.data.sender['role'] in ['sub_admin']:
+                    flag_is_from_group_admin = True
+                    flag_is_from_group_sub_admin = True
         flag_hostEnable = True
         if flag_is_from_host:
             flag_hostEnable = OlivaDiceCore.userConfig.getUserConfigByKey(
@@ -116,7 +124,7 @@ def unity_reply(plugin_event, Proc):
             if flag_is_from_host:
                 if flag_hostEnable:
                     flag_groupEnable = OlivaDiceCore.userConfig.getUserConfigByKey(
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform'],
                         userConfigKey = 'groupEnable',
@@ -124,7 +132,7 @@ def unity_reply(plugin_event, Proc):
                     )
                 else:
                     flag_groupEnable = OlivaDiceCore.userConfig.getUserConfigByKey(
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform'],
                         userConfigKey = 'groupWithHostEnable',
@@ -132,7 +140,7 @@ def unity_reply(plugin_event, Proc):
                     )
             else:
                 flag_groupEnable = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = plugin_event.data.group_id,
+                    userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
                     userConfigKey = 'groupEnable',
@@ -152,7 +160,7 @@ def unity_reply(plugin_event, Proc):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'on')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 if not OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = plugin_event.data.group_id,
+                    userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
                     userConfigKey = 'logEnable',
@@ -162,12 +170,12 @@ def unity_reply(plugin_event, Proc):
                         userConfigKey = 'logEnable',
                         userConfigValue = True,
                         botHash = plugin_event.bot_info.hash,
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
                     if OlivaDiceCore.userConfig.getUserConfigByKey(
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform'],
                         userConfigKey = 'logNowName',
@@ -178,7 +186,7 @@ def unity_reply(plugin_event, Proc):
                             userConfigKey = 'logNowName',
                             userConfigValue = tmp_new_logName,
                             botHash = plugin_event.bot_info.hash,
-                            userId = plugin_event.data.group_id,
+                            userId = tmp_hagID,
                             userType = 'group',
                             platform = plugin_event.platform['platform']
                         )
@@ -189,7 +197,7 @@ def unity_reply(plugin_event, Proc):
                     tmp_reply_str = dictStrCustom['strLoggerLogAlreadyOn'].format(**dictTValue)
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
@@ -200,7 +208,7 @@ def unity_reply(plugin_event, Proc):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'off')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 if OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = plugin_event.data.group_id,
+                    userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
                     userConfigKey = 'logEnable',
@@ -210,7 +218,7 @@ def unity_reply(plugin_event, Proc):
                         userConfigKey = 'logEnable',
                         userConfigValue = False,
                         botHash = plugin_event.bot_info.hash,
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
@@ -219,7 +227,7 @@ def unity_reply(plugin_event, Proc):
                     tmp_reply_str = dictStrCustom['strLoggerLogAlreadyOff'].format(**dictTValue)
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
@@ -233,12 +241,12 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logEnable',
                     userConfigValue = False,
                     botHash = plugin_event.bot_info.hash,
-                    userId = plugin_event.data.group_id,
+                    userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform']
                 )
                 tmp_logName = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = plugin_event.data.group_id,
+                    userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
                     userConfigKey = 'logNowName',
@@ -249,7 +257,7 @@ def unity_reply(plugin_event, Proc):
                         userConfigKey = 'logNowName',
                         userConfigValue = None,
                         botHash = plugin_event.bot_info.hash,
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
@@ -271,7 +279,7 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
-                        userId = plugin_event.data.group_id,
+                        userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )

@@ -23,7 +23,7 @@ class Event(object):
         OlivaDiceLogger.msgReply.unity_init(plugin_event, Proc)
 
     def init_after(plugin_event, Proc):
-        OlivaDiceCore.crossHook.dictHookList['model'].append(['OlivaDiceLogger', OlivaDiceLogger.data.OlivaDiceLogger_ver])
+        OlivaDiceCore.crossHook.dictHookList['model'].append(['OlivaDiceLogger', OlivaDiceLogger.data.OlivaDiceLogger_ver_short])
         OlivaDiceLogger.logger.init_logger(plugin_event, Proc)
         OlivaDiceLogger.msgReply.data_init(plugin_event, Proc)
 
