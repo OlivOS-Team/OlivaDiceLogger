@@ -23,4 +23,4 @@ dataPath = './plugin/data/OlivaDice/unity'
 dataLogPath = '/logger'
 
 dataLogUpload = 'http://api.dice.center/dicelogger/'
-dataLogPainterUrl = 'https://logpainter.trpgbot.com/#2-'
+dataLogPainterUrl = 'https://logrander.dice.center/#2-'
