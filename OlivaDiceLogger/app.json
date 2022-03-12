@@ -3,9 +3,9 @@
     "author" : "lunzhiPenxil",
     "namespace" : "OlivaDiceLogger",
     "message_mode" : "old_string",
-    "version" : "3.0.2",
-    "svn" : 10,
-    "compatible_svn" : 81,
+    "version" : "3.0.3",
+    "svn" : 11,
+    "compatible_svn" : 94,
     "priority" : 30030,
     "support" : [
         {
