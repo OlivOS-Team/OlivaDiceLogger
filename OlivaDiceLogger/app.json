@@ -3,10 +3,11 @@
     "author" : "lunzhiPenxil",
     "namespace" : "OlivaDiceLogger",
     "message_mode" : "old_string",
-    "version" : "3.0.3",
-    "svn" : 11,
-    "compatible_svn" : 95,
-    "priority" : 30030,
+    "info" : "本模块为OlivaDice的日志模块，提供了跑团日志记录器，它可以在跑团过程中对日志进行记录，并由结果生成跑团日志，与在线的跑团日志渲染器进行联动、或发送日志邮件。",
+    "version" : "3.0.4",
+    "svn" : 12,
+    "compatible_svn" : 101,
+    "priority" : 20030,
     "support" : [
         {
             "sdk" : "all",

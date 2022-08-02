@@ -58,6 +58,7 @@ OlivaDice日志模块
 注: 本模块为可选重要模块。''',
 
     'OlivaDiceLogger更新': '''[OlivaDiceLogger]
+3.0.4: 支持新版OlivOS
 3.0.2: 用户记录优化
 3.0.0: 初始化项目''',
 
