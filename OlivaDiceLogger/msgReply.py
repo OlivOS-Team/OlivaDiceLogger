@@ -190,11 +190,11 @@ def unity_reply(plugin_event, Proc):
                             userType = 'group',
                             platform = plugin_event.platform['platform']
                         )
-                        tmp_reply_str = dictStrCustom['strLoggerLogOn'].format(**dictTValue)
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
                     else:
-                        tmp_reply_str = dictStrCustom['strLoggerLogContinue'].format(**dictTValue)
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
                 else:
-                    tmp_reply_str = dictStrCustom['strLoggerLogAlreadyOn'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOn'], dictTValue)
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
                         userId = tmp_hagID,
@@ -222,9 +222,9 @@ def unity_reply(plugin_event, Proc):
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                    tmp_reply_str = dictStrCustom['strLoggerLogOff'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOff'], dictTValue)
                 else:
-                    tmp_reply_str = dictStrCustom['strLoggerLogAlreadyOff'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
                         userId = tmp_hagID,
@@ -261,10 +261,10 @@ def unity_reply(plugin_event, Proc):
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                    tmp_reply_str = dictStrCustom['strLoggerLogEnd'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogEnd'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     dictTValue['tLogName'] = tmp_logName
-                    tmp_reply_str = dictStrCustom['strLoggerLogSave'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     OlivaDiceLogger.logger.releaseLogFile(tmp_logName)
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
@@ -272,10 +272,10 @@ def unity_reply(plugin_event, Proc):
                         OlivaDiceLogger.data.dataLogPainterUrl,
                         tmp_logName
                     )
-                    tmp_reply_str = dictStrCustom['strLoggerLogUrl'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                 else:
-                    tmp_reply_str = dictStrCustom['strLoggerLogAlreadyEnd'].format(**dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyEnd'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
