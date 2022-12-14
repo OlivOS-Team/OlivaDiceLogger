@@ -15,8 +15,8 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 '''
 
 
-OlivaDiceLogger_ver = '3.0.7'
-OlivaDiceLogger_svn = 15
+OlivaDiceLogger_ver = '3.0.8'
+OlivaDiceLogger_svn = 16
 OlivaDiceLogger_ver_short = '%s(%s)' % (str(OlivaDiceLogger_ver), str(OlivaDiceLogger_svn))
 
 dataPath = './plugin/data/OlivaDice/unity'

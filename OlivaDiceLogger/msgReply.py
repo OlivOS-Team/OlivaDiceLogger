@@ -153,7 +153,7 @@ def unity_reply(plugin_event, Proc):
         #此群关闭时中断处理
         if not flag_groupEnable and not flag_force_reply:
             return
-        if isMatchWordStart(tmp_reast_str, 'log') and flag_is_from_group:
+        if isMatchWordStart(tmp_reast_str, 'log', isCommand = True) and flag_is_from_group:
             tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'log')
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
