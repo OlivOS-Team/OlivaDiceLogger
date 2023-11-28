@@ -20,7 +20,10 @@ import OlivaDiceCore
 
 import hashlib
 import time
+from datetime import datetime, timezone, timedelta
 import uuid
+import json
+import traceback
 
 def unity_init(plugin_event, Proc):
     pass
@@ -275,6 +278,64 @@ def unity_reply(plugin_event, Proc):
                     )
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
+                    try:
+                        if plugin_event.indeAPI.hasAPI('create_message'):
+                            plugin_event.indeAPI.create_message(
+                                chat_type = 'group',
+                                chat_id = plugin_event.data.group_id,
+                                content_type = 10,
+                                content = json.dumps(
+                                    [
+                                        {
+                                            "type": "card",
+                                            "theme": "primary",
+                                            "color": "#009FE9",
+                                            "size": "lg",
+                                            "modules": [
+                                                {
+                                                    "type": "header",
+                                                    "text": {
+                                                        "type": "plain-text",
+                                                        "content": "您的日志将在如下时间后过期，请尽快点击按钮提取"
+                                                    }
+                                                },
+                                                {
+                                                    "type": "countdown",
+                                                    "mode": "day",
+                                                    "endTime": int((int(datetime.now(timezone.utc).timestamp()) + 7 * 24 * 60 * 60) * 1000)
+                                                },
+                                                {
+                                                    "type": "action-group",
+                                                    "elements": [
+                                                        {
+                                                            "type": "button",
+                                                            "theme": "info",
+                                                            "value": str(dictTValue['tLogUrl']),
+                                                            "click": "link",
+                                                            "text": {
+                                                                "type": "plain-text",
+                                                                "content": "点我提取日志"
+                                                            }
+                                                        }
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "context",
+                                                    "elements": [
+                                                        {
+                                                          "type": "plain-text",
+                                                          "content": "OlivaDice - 青果核心掷骰机器人"
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ],
+                                    ensure_ascii=False
+                                )
+                            )
+                    except Exception as e:
+                        traceback.print_exc()
                 else:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyEnd'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
