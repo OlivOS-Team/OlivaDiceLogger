@@ -21,12 +21,90 @@ import OlivaDiceLogger
 import time
 import json
 import os
+import traceback
 import requests as req
 from functools import wraps
 
 def init_logger(plugin_event, Proc):
     releaseDir('%s%s' % (OlivaDiceLogger.data.dataPath, OlivaDiceLogger.data.dataLogPath))
     OlivaDiceCore.crossHook.dictHookFunc['msgHook'] = add_logger_func(OlivaDiceCore.crossHook.dictHookFunc['msgHook'])
+    try:
+        import OlivOSOnebotV11
+        OlivOSOnebotV11.eventRouter.txEvent.doRouter = add_logger_lazy_reply_func(
+            OlivOSOnebotV11.eventRouter.txEvent.doRouter
+        )
+    except Exception as e:
+        traceback.print_exc()
+
+def add_logger_lazy_reply_func(target_func):
+    @wraps(target_func)
+    def logger_func(self_arg):
+        res = target_func(self_arg)
+        try:
+            loggerEntryLazyReply(self_arg)
+        except Exception as e:
+            traceback.print_exc()
+        return res
+    return logger_func
+
+def loggerEntryLazyReply(self_arg):
+    try:
+        import OlivOSOnebotV11
+        tmp_event = None
+        tmp_funcType = None
+        tmp_sender = None
+        tmp_dectData = None
+        tmp_message = None
+        if self_arg.funcType in [
+            'send_msg'
+        ]:
+            if self_arg.params['message_type'] == 'private':
+                pass
+            elif self_arg.params['message_type'] == 'group':
+                tmp_funcType = 'send_group'
+        elif self_arg.funcType in [
+            'send_private_msg'
+        ]:
+            pass
+        elif self_arg.funcType in [
+            'send_group_msg'
+        ]:
+            tmp_funcType = 'send_group'
+        if tmp_funcType == 'send_group':
+            tmp_botHash = self_arg.plugin_event.bot_info.hash
+            tmp_sender = {
+                'id': str(self_arg.plugin_event.bot_info.id),
+                'name': 'Bot'
+            }
+            tmp_groupId = str(self_arg.params['group_id'])
+            tmp_event = self_arg.plugin_event
+            tmp_event_new = OlivOSOnebotV11.eventRouter.getEventRegDict(
+                botHash = tmp_botHash,
+                key = f'group_message/{tmp_groupId}'
+            )
+            if tmp_event_new is not None:
+                tmp_event = tmp_event_new
+            tmp_hostId = OlivOSOnebotV11.eventRouter.getHostIdDict(
+                botHash = tmp_botHash,
+                groupId = tmp_groupId
+            )
+            tmp_groupId = OlivOSOnebotV11.eventRouter.getMappingIdDict(tmp_botHash, tmp_groupId)
+            tmp_hostId = OlivOSOnebotV11.eventRouter.getMappingIdDict(tmp_botHash, tmp_hostId)
+            if tmp_hostId == 'None':
+                tmp_hostId = None
+            tmp_dectData = [tmp_hostId, tmp_groupId, None]
+            tmp_message = OlivOSOnebotV11.eventRouter.paraRvMapper(
+                self_arg.params['message']
+            ).get('old_string')
+        if tmp_event is not None \
+        and tmp_funcType is not None \
+        and tmp_sender is not None \
+        and tmp_dectData is not None \
+        and tmp_message is not None:
+            loggerEntry(tmp_event, tmp_funcType, tmp_sender, tmp_dectData, tmp_message)
+    except Exception as e:
+        traceback.print_exc()
+
 
 def add_logger_func(target_func):
     @wraps(target_func)
@@ -35,6 +113,7 @@ def add_logger_func(target_func):
         loggerEntry(*arg, **kwargs)
         return res
     return logger_func
+
 
 def loggerEntry(event, funcType, sender, dectData, message):
     [host_id, group_id, user_id] = dectData
