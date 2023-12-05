@@ -279,7 +279,8 @@ def unity_reply(plugin_event, Proc):
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     try:
-                        if plugin_event.indeAPI.hasAPI('create_message'):
+                        if plugin_event.platform['platform'] == 'kaiheila'\
+                        and plugin_event.indeAPI.hasAPI('create_message'):
                             plugin_event.indeAPI.create_message(
                                 chat_type = 'group',
                                 chat_id = plugin_event.data.group_id,
