@@ -28,8 +28,8 @@ dictStrCustom = {
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
     'strLoggerLogEnd': '停止记录日志',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
-    'strLoggerLogSave': '日志[{tLogName}]已保存',
-    'strLoggerLogUrl': '日志已上传，请在[{tLogUrl}]提取日志'
+    'strLoggerLogSave': '日志[ {tLogName} ]已保存',
+    'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志'
 }
 
 dictStrConst = {

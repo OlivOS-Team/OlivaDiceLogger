@@ -22,8 +22,11 @@ import time
 import json
 import os
 import traceback
+import threading
 import requests as req
 from functools import wraps
+
+gLoggerIOLockMap = {}
 
 def init_logger(plugin_event, Proc):
     releaseDir('%s%s' % (OlivaDiceLogger.data.dataPath, OlivaDiceLogger.data.dataLogPath))
@@ -167,8 +170,13 @@ def loggerEntry(event, funcType, sender, dectData, message):
                 dataPath = OlivaDiceLogger.data.dataPath
                 dataLogPath = OlivaDiceLogger.data.dataLogPath
                 dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, tmp_logName)
+                if dataLogFile not in gLoggerIOLockMap:
+                    gLoggerIOLockMap[dataLogFile] = threading.Lock()
+                loggerIOLock = gLoggerIOLockMap[dataLogFile]
+                loggerIOLock.acquire()
                 with open(dataLogFile, 'a+', encoding = 'utf-8') as dataLogFile_f:
                     dataLogFile_f.write('%s\n' % log_str)
+                loggerIOLock.release()
     pass
 
 def releaseLogFile(logName):
