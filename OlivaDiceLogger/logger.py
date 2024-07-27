@@ -185,7 +185,7 @@ def releaseLogFile(logName):
     dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)
     dataLogFile_1 = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
     tmp_dataLogFile = None
-    with open(dataLogFile, 'r+', encoding = 'utf-8') as dataLogFile_f:
+    with open(dataLogFile, 'r+', encoding = 'utf-8' , errors='ignore' ) as dataLogFile_f:
         tmp_dataLogFile = dataLogFile_f.read()
     if tmp_dataLogFile != None:
         tmp_dataLogFile = tmp_dataLogFile.strip('\n')
