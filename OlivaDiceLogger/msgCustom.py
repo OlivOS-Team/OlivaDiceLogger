@@ -21,15 +21,19 @@ import OlivaDiceLogger
 dictStrCustomDict = {}
 
 dictStrCustom = {
-    'strLoggerLogOn': '开始记录日志',
-    'strLoggerLogAlreadyOn': '已经正在记录日志',
-    'strLoggerLogContinue': '继续记录日志',
-    'strLoggerLogOff': '暂停记录日志',
+    'strLoggerLogOn': '开始记录日志 [{tLogName}]',
+    'strLoggerLogAlreadyOn': '已经正在记录日志 [{tLogName}]',
+    'strLoggerLogContinue': '继续记录日志 [{tLogName}]',
+    'strLoggerLogOff': '暂停记录日志 [{tLogName}]',
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
-    'strLoggerLogEnd': '停止记录日志',
+    'strLoggerLogEnd': '停止记录日志 [{tLogName}]',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
-    'strLoggerLogSave': '日志[ {tLogName} ]已保存',
-    'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志'
+    'strLoggerLogSave': '日志 [{tLogName}] 已保存',
+    'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志',
+    'strLoggerLogList': '本群有以下日志:\n{tLogList}',
+    'strLoggerLogListEmpty': '本群暂无日志',
+    'strLoggerLogNotFound': '未找到日志 [{tLogName}]',
+    'strLoggerLogSwitch': '已切换到日志 [{tLogName}]'
 }
 
 dictStrConst = {
@@ -45,9 +49,10 @@ dictTValue = {
 
 dictHelpDocTemp = {
     'log': '''跑团日志记录
-.log on 开始记录
-.log off 暂停记录
-.log end 完成记录并发送日志文件
+.log on [名字] 开始记录日志（默认名称或指定）
+.log off [名字] 暂停记录指定或当前日志
+.log end [名字] 完成记录并发送日志文件
+.log list 查看本群日志列表
 日志上传存在失败可能，届时请联系后台管理索取''',
 
     'OlivaDiceLogger': '''[OlivaDiceLogger]

@@ -20,7 +20,9 @@ import OlivaDiceLogger
 dictUserConfigNoteDefault = {
     'logEnable' : False,
     'logNowName' : None,
-    'logNameList' : []
+    'logActiveName': None,  # 当前活跃的日志名
+    'logNameList' : [],     # 所有日志名列表
+    'logNameDict' : {}      # 日志名到UUID的映射
 }
 
 def initUserConfigNoteDefault(bot_info_dict):

@@ -19,6 +19,7 @@ import OlivaDiceCore
 import OlivaDiceLogger
 
 import time
+import uuid
 import json
 import os
 import traceback
@@ -28,7 +29,33 @@ from functools import wraps
 
 gLoggerIOLockMap = {}
 
+# 兼容性处理只做一次
+_compatibility_processed = False
+
+def check_and_process_compatibility():
+    global _compatibility_processed
+    if not _compatibility_processed:
+        # 兼容性处理
+        dataPath = OlivaDiceLogger.data.dataPath
+        dataLogPath = OlivaDiceLogger.data.dataLogPath
+        log_dir = f'{dataPath}{dataLogPath}'
+        if os.path.exists(log_dir):
+            extensions = ['.olivadicelog', '.trpglog']
+            for ext in extensions:
+                for filename in os.listdir(log_dir):
+                    if filename.endswith(ext) and '_' not in filename.replace('log_', '', 1):
+                        base_name = filename[:-len(ext)]
+                        clean_name = base_name.replace('log_', '', 1)
+                        new_name = f'log_{clean_name}_default{ext}'
+                        if not os.path.exists(f'{log_dir}/{new_name}'):
+                            os.rename(
+                                f'{log_dir}/{filename}',
+                                f'{log_dir}/{new_name}'
+                            )
+        _compatibility_processed = True
+
 def init_logger(plugin_event, Proc):
+    check_and_process_compatibility()
     releaseDir('%s%s' % (OlivaDiceLogger.data.dataPath, OlivaDiceLogger.data.dataLogPath))
     OlivaDiceCore.crossHook.dictHookFunc['msgHook'] = add_logger_func(OlivaDiceCore.crossHook.dictHookFunc['msgHook'])
     try:
@@ -117,6 +144,13 @@ def add_logger_func(target_func):
         return res
     return logger_func
 
+def check_log_file_exists(log_name):
+    check_and_process_compatibility()
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    olivadicelog_file = f'{dataPath}{dataLogPath}/{log_name}.olivadicelog'
+    trpglog_file = f'{dataPath}{dataLogPath}/{log_name}.trpglog'
+    return os.path.exists(olivadicelog_file) and os.path.exists(trpglog_file)
 
 def loggerEntry(event, funcType, sender, dectData, message):
     [host_id, group_id, user_id] = dectData
@@ -137,7 +171,14 @@ def loggerEntry(event, funcType, sender, dectData, message):
         'reply',
         'send_group'
     ]:
-        if OlivaDiceCore.userConfig.getUserConfigByKey(
+        active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+            userId = tmp_hagID,
+            userType = 'group',
+            platform = event.platform['platform'],
+            userConfigKey = 'logActiveName',
+            botHash = event.bot_info.hash
+        )
+        if active_log_name and OlivaDiceCore.userConfig.getUserConfigByKey(
             userId = tmp_hagID,
             userType = 'group',
             platform = event.platform['platform'],
@@ -159,31 +200,37 @@ def loggerEntry(event, funcType, sender, dectData, message):
                 'message': message
             }
             log_str = json.dumps(log_dict, ensure_ascii = False)
-            tmp_logName = OlivaDiceCore.userConfig.getUserConfigByKey(
+            log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
                 userId = tmp_hagID,
                 userType = 'group',
                 platform = event.platform['platform'],
-                userConfigKey = 'logNowName',
+                userConfigKey = 'logNameDict',
                 botHash = event.bot_info.hash
-            )
-            if tmp_logName != None:
-                dataPath = OlivaDiceLogger.data.dataPath
-                dataLogPath = OlivaDiceLogger.data.dataLogPath
-                dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, tmp_logName)
-                if dataLogFile not in gLoggerIOLockMap:
-                    gLoggerIOLockMap[dataLogFile] = threading.Lock()
-                loggerIOLock = gLoggerIOLockMap[dataLogFile]
-                loggerIOLock.acquire()
-                with open(dataLogFile, 'a+', encoding = 'utf-8') as dataLogFile_f:
-                    dataLogFile_f.write('%s\n' % log_str)
-                loggerIOLock.release()
+            ) or {}
+            tmp_log_uuid = log_name_dict.get(active_log_name, str(uuid.uuid4()))
+            tmp_logName = f'log_{tmp_log_uuid}_{active_log_name}'
+            dataPath = OlivaDiceLogger.data.dataPath
+            dataLogPath = OlivaDiceLogger.data.dataLogPath
+            dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, tmp_logName)
+            if dataLogFile not in gLoggerIOLockMap:
+                gLoggerIOLockMap[dataLogFile] = threading.Lock()
+            loggerIOLock = gLoggerIOLockMap[dataLogFile]
+            loggerIOLock.acquire()
+            with open(dataLogFile, 'a+', encoding = 'utf-8') as dataLogFile_f:
+                dataLogFile_f.write('%s\n' % log_str)
+            loggerIOLock.release()
     pass
 
 def releaseLogFile(logName):
+    check_and_process_compatibility()
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
     dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)
     dataLogFile_1 = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
+    
+    if not os.path.exists(dataLogFile):
+        return False
+        
     tmp_dataLogFile = None
     with open(dataLogFile, 'r+', encoding = 'utf-8' , errors='ignore' ) as dataLogFile_f:
         tmp_dataLogFile = dataLogFile_f.read()
@@ -206,6 +253,8 @@ def releaseLogFile(logName):
                 )
         with open(dataLogFile_1, 'w+', encoding = 'utf-8') as dataLogFile_f:
             dataLogFile_f.write(res_logFile_str)
+        return True
+    return False
 
 def uploadLogFile(logName):
     dataPath = OlivaDiceLogger.data.dataPath
