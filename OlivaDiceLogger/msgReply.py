@@ -197,6 +197,11 @@ def unity_reply(plugin_event, Proc):
 
                 if tmp_reast_str.strip() != '':
                     log_name = tmp_reast_str.strip()
+                    if not OlivaDiceLogger.logger.is_valid_log_name(log_name):
+                        dictTValue['tLogName'] = log_name
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogInvalidName'], dictTValue)
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
 
                 log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,

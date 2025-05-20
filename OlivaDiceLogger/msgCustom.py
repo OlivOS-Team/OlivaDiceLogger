@@ -33,7 +33,8 @@ dictStrCustom = {
     'strLoggerLogList': '本群有以下日志:\n{tLogList}',
     'strLoggerLogListEmpty': '本群暂无日志',
     'strLoggerLogNotFound': '未找到日志 [{tLogName}]',
-    'strLoggerLogSwitch': '已切换到日志 [{tLogName}]'
+    'strLoggerLogSwitch': '已切换到日志 [{tLogName}]',
+    'strLoggerLogInvalidName': '日志名称 [{tLogName}] 不合法'
 }
 
 dictStrConst = {

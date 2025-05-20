@@ -20,6 +20,7 @@ import OlivaDiceLogger
 
 import time
 import uuid
+import re
 import json
 import os
 import traceback
@@ -143,6 +144,15 @@ def add_logger_func(target_func):
         loggerEntry(*arg, **kwargs)
         return res
     return logger_func
+
+def is_valid_log_name(name):
+    if re.search(r'(?:[\\/:*?"<>|\[\]\x00-\x1F]|&#(?:91|93)|&amp)', name):
+        return False
+    
+    if name.endswith('.'):
+        return False
+    
+    return True
 
 def check_log_file_exists(log_name):
     check_and_process_compatibility()
