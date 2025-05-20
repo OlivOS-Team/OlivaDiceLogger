@@ -20,6 +20,7 @@ import OlivaDiceCore
 
 import hashlib
 import time
+import os
 from datetime import datetime, timezone, timedelta
 import uuid
 import json
@@ -160,45 +161,107 @@ def unity_reply(plugin_event, Proc):
             tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'log')
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
+
             if isMatchWordStart(tmp_reast_str, 'on'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'on')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
-                if not OlivaDiceCore.userConfig.getUserConfigByKey(
+
+                is_logging = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
                     userConfigKey = 'logEnable',
                     botHash = plugin_event.bot_info.hash
-                ):
+                )
+
+                if is_logging:
+                    active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = plugin_event.bot_info.hash
+                    )
+                    dictTValue['tLogName'] = active_log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOn'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                ) or 'default'
+
+                if tmp_reast_str.strip() != '':
+                    log_name = tmp_reast_str.strip()
+                    if not OlivaDiceLogger.logger.is_valid_log_name(log_name):
+                        dictTValue['tLogName'] = log_name
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogInvalidName'], dictTValue)
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
+
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameList',
+                    botHash = plugin_event.bot_info.hash
+                ) or []
+
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
+                ) or {}
+                        
+                if log_name not in log_name_list:
+                    log_name_list.append(log_name)
+                    log_name_dict[log_name] = str(uuid.uuid4())
                     OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logEnable',
-                        userConfigValue = True,
+                        userConfigKey = 'logNameList',
+                        userConfigValue = log_name_list,
                         botHash = plugin_event.bot_info.hash,
                         userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                    if OlivaDiceCore.userConfig.getUserConfigByKey(
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logNameDict',
+                        userConfigValue = log_name_dict,
+                        botHash = plugin_event.bot_info.hash,
                         userId = tmp_hagID,
                         userType = 'group',
-                        platform = plugin_event.platform['platform'],
-                        userConfigKey = 'logNowName',
-                        botHash = plugin_event.bot_info.hash
-                    ) == None:
-                        tmp_new_logName = 'log_%s' % str(uuid.uuid4())
-                        OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logNowName',
-                            userConfigValue = tmp_new_logName,
-                            botHash = plugin_event.bot_info.hash,
-                            userId = tmp_hagID,
-                            userType = 'group',
-                            platform = plugin_event.platform['platform']
-                        )
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
-                    else:
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
+                        platform = plugin_event.platform['platform']
+                    )
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
                 else:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOn'], dictTValue)
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
+
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey = 'logActiveName',
+                    userConfigValue = log_name,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
+                )
+
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey = 'logEnable',
+                    userConfigValue = True,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
+                )
+
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
                         userId = tmp_hagID,
@@ -208,16 +271,115 @@ def unity_reply(plugin_event, Proc):
                 )
                 replyMsg(plugin_event, tmp_reply_str)
                 return
+
             elif isMatchWordStart(tmp_reast_str, 'off'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'off')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
-                if OlivaDiceCore.userConfig.getUserConfigByKey(
+
+                # 优先使用当前记录日志
+                log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
-                    userConfigKey = 'logEnable',
+                    userConfigKey = 'logActiveName',
                     botHash = plugin_event.bot_info.hash
-                ):
+                )
+
+                # 如果用户指定了日志名，则使用指定的
+                if tmp_reast_str.strip() != '':
+                    log_name = tmp_reast_str.strip()
+
+                if log_name is None:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
+                else:
+                    # 检查是否是当前记录日志
+                    active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = plugin_event.bot_info.hash
+                    )
+
+                    if active_log_name == log_name:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logEnable',
+                            userConfigValue = False,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                        dictTValue['tLogName'] = log_name
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOff'], dictTValue)
+                    else:
+                        dictTValue['tLogName'] = log_name
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
+
+                OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                    userHash = OlivaDiceCore.userConfig.getUserHash(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+
+            elif isMatchWordStart(tmp_reast_str, 'end'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'end')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+
+                log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+
+                if tmp_reast_str.strip() != '':
+                    log_name = tmp_reast_str.strip()
+
+                if log_name is None:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyEnd'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameList',
+                    botHash = plugin_event.bot_info.hash
+                ) or []
+
+                if log_name not in log_name_list:
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogNotFound'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
+                ) or {}
+
+                tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+
+                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+
+                if active_log_name == log_name:
                     OlivaDiceCore.userConfig.setUserConfigByKey(
                         userConfigKey = 'logEnable',
                         userConfigValue = False,
@@ -226,51 +388,24 @@ def unity_reply(plugin_event, Proc):
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOff'], dictTValue)
-                else:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
-                OlivaDiceCore.userConfig.writeUserConfigByUserHash(
-                    userHash = OlivaDiceCore.userConfig.getUserHash(
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
-                )
-                replyMsg(plugin_event, tmp_reply_str)
-                return
-            elif isMatchWordStart(tmp_reast_str, 'end'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'end')
-                tmp_reast_str = skipSpaceStart(tmp_reast_str)
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logEnable',
-                    userConfigValue = False,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
-                tmp_logName = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform'],
-                    userConfigKey = 'logNowName',
-                    botHash = plugin_event.bot_info.hash
-                )
-                if tmp_logName != None:
                     OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logNowName',
+                        userConfigKey = 'logActiveName',
                         userConfigValue = None,
                         botHash = plugin_event.bot_info.hash,
                         userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogEnd'], dictTValue)
-                    replyMsg(plugin_event, tmp_reply_str)
-                    dictTValue['tLogName'] = tmp_logName
+
+                dictTValue['tLogName'] = log_name
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogEnd'], dictTValue)
+                replyMsg(plugin_event, tmp_reply_str)
+
+                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName):
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = tmp_log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
-                    OlivaDiceLogger.logger.releaseLogFile(tmp_logName)
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
                     dictTValue['tLogUrl'] = '%s%s' % (
                         OlivaDiceLogger.data.dataLogPainterUrl,
@@ -278,6 +413,29 @@ def unity_reply(plugin_event, Proc):
                     )
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
+
+                    if log_name in log_name_list:
+                        log_name_list.remove(log_name)
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logNameList',
+                            userConfigValue = log_name_list,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                        
+                        if log_name in log_name_dict:
+                            del log_name_dict[log_name]
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logNameDict',
+                                userConfigValue = log_name_dict,
+                                botHash = plugin_event.bot_info.hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform']
+                            )
+
                     try:
                         if plugin_event.platform['platform'] == 'kaiheila'\
                         and plugin_event.indeAPI.hasAPI('create_message'):
@@ -337,9 +495,7 @@ def unity_reply(plugin_event, Proc):
                             )
                     except Exception as e:
                         traceback.print_exc()
-                else:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyEnd'], dictTValue)
-                    replyMsg(plugin_event, tmp_reply_str)
+
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
                         userId = tmp_hagID,
@@ -348,6 +504,54 @@ def unity_reply(plugin_event, Proc):
                     )
                 )
                 return
+
+            elif isMatchWordStart(tmp_reast_str, 'list'):
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameList',
+                    botHash = plugin_event.bot_info.hash
+                ) or []
+
+                # 过滤掉已结束的日志
+                active_logs = []
+                for name in log_name_list:
+                    tmp_log_uuid = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = plugin_event.bot_info.hash
+                    ).get(name, str(uuid.uuid4()))
+                    tmp_logName = f'log_{tmp_log_uuid}_{name}'
+                    if not OlivaDiceLogger.logger.check_log_file_exists(tmp_logName):
+                        active_logs.append(name)
+
+                if len(active_logs) == 0:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogListEmpty'], dictTValue)
+                else:
+                    active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = plugin_event.bot_info.hash
+                    )
+
+                    log_list_str = []
+                    for name in active_logs:
+                        if name == active_log_name:
+                            log_list_str.append(f"- {name} (当前记录)")
+                        else:
+                            log_list_str.append(f"- {name}")
+
+                    dictTValue['tLogList'] = '\n'.join(log_list_str)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogList'], dictTValue)
+
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+
             else:
                 replyMsgLazyHelpByEvent(plugin_event, 'log')
             return

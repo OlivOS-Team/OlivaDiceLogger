@@ -20,7 +20,9 @@ import OlivaDiceLogger
 dictUserConfigNoteDefault = {
     'logEnable' : False,
     'logNowName' : None,
-    'logNameList' : []
+    'logActiveName': None,
+    'logNameList' : [],
+    'logNameDict' : {}
 }
 
 def initUserConfigNoteDefault(bot_info_dict):
