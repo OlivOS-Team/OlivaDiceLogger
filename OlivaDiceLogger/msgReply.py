@@ -213,26 +213,10 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logNameDict',
                     botHash = plugin_event.bot_info.hash
                 ) or {}
-
-                # 处理重名日志
-                original_log_name = log_name
-                suffix = 1
-                while True:
-                    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
-                    tmp_logName = f'log_{tmp_log_uuid}'
-                    if log_name != 'default':
-                        tmp_logName += f'_{log_name}'
-
-                    if not OlivaDiceLogger.logger.check_log_file_exists(tmp_logName):
-                        break
-                    
-                    suffix += 1
-                    if suffix > 1 and log_name == original_log_name:
-                        log_name = f'{original_log_name}_{suffix}'
                         
                 if log_name not in log_name_list:
                     log_name_list.append(log_name)
-                    log_name_dict[log_name] = tmp_log_uuid 
+                    log_name_dict[log_name] = str(uuid.uuid4())
                     OlivaDiceCore.userConfig.setUserConfigByKey(
                         userConfigKey = 'logNameList',
                         userConfigValue = log_name_list,
@@ -249,7 +233,12 @@ def unity_reply(plugin_event, Proc):
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                    
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
+                else:
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
+
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userConfigKey = 'logActiveName',
                     userConfigValue = log_name,
@@ -267,9 +256,6 @@ def unity_reply(plugin_event, Proc):
                     userType = 'group',
                     platform = plugin_event.platform['platform']
                 )
-
-                dictTValue['tLogName'] = log_name
-                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
 
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
@@ -380,12 +366,6 @@ def unity_reply(plugin_event, Proc):
                 tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
                 tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
 
-                # 检查是否有重名文件
-                suffix = 1
-                while OlivaDiceLogger.logger.check_log_file_exists(tmp_logName):
-                    tmp_logName = f'{tmp_log_uuid}_{log_name}_{suffix}'
-                    suffix += 1
-
                 active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
@@ -418,6 +398,7 @@ def unity_reply(plugin_event, Proc):
 
                 if OlivaDiceLogger.logger.releaseLogFile(tmp_logName):
                     dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = tmp_log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
