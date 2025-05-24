@@ -23,10 +23,10 @@ dictStrCustomDict = {}
 dictStrCustom = {
     'strLoggerLogOn': '开始记录日志 [{tLogName}]',
     'strLoggerLogAlreadyOn': '已经正在记录日志 [{tLogName}]',
-    'strLoggerLogContinue': '继续记录日志 [{tLogName}]',
-    'strLoggerLogOff': '暂停记录日志 [{tLogName}]',
+    'strLoggerLogContinue': '继续记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
+    'strLoggerLogOff': '暂停记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
-    'strLoggerLogEnd': '结束记录日志 [{tLogName}]',
+    'strLoggerLogEnd': '结束记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
     'strLoggerLogSave': '日志 [{tLogName}] (UUID: {tLogUUID}) 已保存',
     'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志',

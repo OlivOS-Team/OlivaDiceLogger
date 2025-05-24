@@ -136,7 +136,6 @@ def loggerEntryLazyReply(self_arg):
     except Exception as e:
         traceback.print_exc()
 
-
 def add_logger_func(target_func):
     @wraps(target_func)
     def logger_func(*arg, **kwargs):
@@ -153,6 +152,22 @@ def is_valid_log_name(name):
         return False
     
     return True
+
+def get_log_lines(log_name):
+    check_and_process_compatibility()
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, log_name)
+    
+    if not os.path.exists(dataLogFile):
+        return 0
+    
+    try:
+        with open(dataLogFile, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            return len(lines)
+    except:
+        return 0
 
 def check_log_file_exists(log_name):
     check_and_process_compatibility()

@@ -241,6 +241,10 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
                 else:
+                    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                    tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                    log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                    dictTValue['tLogLines'] = str(log_lines)
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
 
@@ -275,7 +279,15 @@ def unity_reply(plugin_event, Proc):
             elif isMatchWordStart(tmp_reast_str, 'off'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'off')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
-
+                
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
+                ) or {}
+                
                 # 优先使用当前记录日志
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
@@ -310,6 +322,10 @@ def unity_reply(plugin_event, Proc):
                             userType = 'group',
                             platform = plugin_event.platform['platform']
                         )
+                        tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                        tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                        log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                        dictTValue['tLogLines'] = str(log_lines)
                         dictTValue['tLogName'] = log_name
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOff'], dictTValue)
                     else:
@@ -370,6 +386,8 @@ def unity_reply(plugin_event, Proc):
 
                 tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
                 tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                dictTValue['tLogLines'] = str(log_lines)
 
                 active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
