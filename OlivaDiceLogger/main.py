@@ -32,6 +32,9 @@ class Event(object):
 
     def group_message(plugin_event, Proc):
         OlivaDiceLogger.msgReply.unity_reply(plugin_event, Proc)
+        
+    def group_message_recall(plugin_event, Proc):
+        OlivaDiceLogger.logger.handle_message_recall(plugin_event)
 
     def poke(plugin_event, Proc):
         pass
