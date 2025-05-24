@@ -334,31 +334,36 @@ def releaseLogFile(logName):
         return False
         
     tmp_dataLogFile = None
-    with open(dataLogFile, 'r+', encoding = 'utf-8' , errors='ignore' ) as dataLogFile_f:
-        tmp_dataLogFile = dataLogFile_f.read()
-    if tmp_dataLogFile != None:
-        tmp_dataLogFile = tmp_dataLogFile.strip('\n')
-        tmp_dataLogFile_list = tmp_dataLogFile.split('\n')
-        res_logFile_str = ''
-        for tmp_dataLogFile_list_this in tmp_dataLogFile_list:
-            tmp_dataLog_json = None
-            try:
-                tmp_dataLog_json = json.loads(tmp_dataLogFile_list_this)
-            except:
+    try:
+        with open(dataLogFile, 'r+', encoding = 'utf-8' , errors='ignore' ) as dataLogFile_f:
+            tmp_dataLogFile = dataLogFile_f.read()
+        
+        if tmp_dataLogFile != None:
+            tmp_dataLogFile = tmp_dataLogFile.strip('\n')
+            tmp_dataLogFile_list = tmp_dataLogFile.split('\n')
+            res_logFile_str = ''
+            for tmp_dataLogFile_list_this in tmp_dataLogFile_list:
                 tmp_dataLog_json = None
-            if tmp_dataLog_json != None:
-                # 跳过增加删除标记的消息
-                if tmp_dataLog_json.get('deleted', False):
-                    continue
-                res_logFile_str += '%s(%s) %s\n%s\n' % (
-                    str(tmp_dataLog_json['sender']['name']),
-                    str(tmp_dataLog_json['sender']['id']),
-                    str(time.strftime('%H:%M:%S', time.localtime(tmp_dataLog_json['time']))),
-                    str(tmp_dataLog_json['message'])
-                )
-        with open(dataLogFile_1, 'w+', encoding = 'utf-8') as dataLogFile_f:
-            dataLogFile_f.write(res_logFile_str)
-        return True
+                try:
+                    tmp_dataLog_json = json.loads(tmp_dataLogFile_list_this)
+                except:
+                    tmp_dataLog_json = None
+                if tmp_dataLog_json != None:
+                    # 跳过增加删除标记的消息
+                    if tmp_dataLog_json.get('deleted', False):
+                        continue
+                    res_logFile_str += '%s(%s) %s\n%s\n' % (
+                        str(tmp_dataLog_json['sender']['name']),
+                        str(tmp_dataLog_json['sender']['id']),
+                        str(time.strftime('%H:%M:%S', time.localtime(tmp_dataLog_json['time']))),
+                        str(tmp_dataLog_json['message'])
+                    )
+            with open(dataLogFile_1, 'w+', encoding = 'utf-8') as dataLogFile_f:
+                dataLogFile_f.write(res_logFile_str)
+            return True
+    except Exception as e:
+        traceback.print_exc()
+        return False
     return False
 
 def uploadLogFile(logName):
