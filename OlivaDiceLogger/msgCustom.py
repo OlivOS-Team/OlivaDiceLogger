@@ -23,10 +23,10 @@ dictStrCustomDict = {}
 dictStrCustom = {
     'strLoggerLogOn': '开始记录日志 [{tLogName}]',
     'strLoggerLogAlreadyOn': '已经正在记录日志 [{tLogName}]',
-    'strLoggerLogContinue': '继续记录日志 [{tLogName}]',
-    'strLoggerLogOff': '暂停记录日志 [{tLogName}]',
+    'strLoggerLogContinue': '继续记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
+    'strLoggerLogOff': '暂停记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
-    'strLoggerLogEnd': '结束记录日志 [{tLogName}]',
+    'strLoggerLogEnd': '结束记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
     'strLoggerLogSave': '日志 [{tLogName}] (UUID: {tLogUUID}) 已保存',
     'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志',
@@ -34,7 +34,13 @@ dictStrCustom = {
     'strLoggerLogListEmpty': '本群暂无日志',
     'strLoggerLogNotFound': '未找到日志 [{tLogName}]',
     'strLoggerLogSwitch': '已切换到日志 [{tLogName}]',
-    'strLoggerLogInvalidName': '日志名称 [{tLogName}] 不合法'
+    'strLoggerLogInvalidName': '日志名称 [{tLogName}] 不合法',
+    'strLoggerLogStop': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (当前已记录 {tLogLines} 行)',
+    'strLoggerLogStopError': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (日志已损坏)',
+    'strLoggerLogUploadNoName': '请指定要上传的日志的UUID',
+    'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
+    'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，请在[ {tLogUrl} ]提取日志',
+    'strLoggerLogUploadFailed': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传失败，请稍后再试'
 }
 
 dictStrConst = {
@@ -54,6 +60,8 @@ dictHelpDocTemp = {
 .log off [名字] 暂停记录指定或当前日志
 .log end [名字] 完成记录并发送日志文件
 .log list 查看本群日志列表
+.log stop [名字] 强制停止日志不上传
+.log upload [UUID] 手动上传指定UUID的日志(必须为已经end/stop的日志)
 若不带名字则默认名字为default
 日志上传存在失败可能，届时请联系后台管理索取''',
 

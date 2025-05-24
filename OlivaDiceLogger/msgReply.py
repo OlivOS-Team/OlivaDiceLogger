@@ -241,6 +241,10 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
                 else:
+                    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                    tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                    log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                    dictTValue['tLogLines'] = str(log_lines)
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
 
@@ -275,7 +279,15 @@ def unity_reply(plugin_event, Proc):
             elif isMatchWordStart(tmp_reast_str, 'off'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'off')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
-
+                
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
+                ) or {}
+                
                 # 优先使用当前记录日志
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
@@ -310,6 +322,10 @@ def unity_reply(plugin_event, Proc):
                             userType = 'group',
                             platform = plugin_event.platform['platform']
                         )
+                        tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                        tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                        log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                        dictTValue['tLogLines'] = str(log_lines)
                         dictTValue['tLogName'] = log_name
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOff'], dictTValue)
                     else:
@@ -370,6 +386,8 @@ def unity_reply(plugin_event, Proc):
 
                 tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
                 tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                dictTValue['tLogLines'] = str(log_lines)
 
                 active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
@@ -551,7 +569,215 @@ def unity_reply(plugin_event, Proc):
 
                 replyMsg(plugin_event, tmp_reply_str)
                 return
+            
+            elif isMatchWordStart(tmp_reast_str, 'stop'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'stop')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                
+                log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+            
+                if tmp_reast_str.strip() != '':
+                    log_name = tmp_reast_str.strip()
+            
+                if log_name is None:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyEnd'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+            
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameList',
+                    botHash = plugin_event.bot_info.hash
+                ) or []
+            
+                if log_name not in log_name_list:
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogNotFound'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+            
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
+                ) or {}
+            
+                tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
 
+                # 检查日志文件是否存在，若不存在则创建空文件
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                log_error = False
+
+                if os.path.exists(dataLogFile):
+                    try:
+                        with open(dataLogFile, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                line = line.strip()
+                                if line:
+                                    try:
+                                        json.loads(line)
+                                    except json.JSONDecodeError:
+                                        log_error = True
+                                        break
+                                    
+                        # 如果检测到错误，重命名原文件并创建新文件
+                        if log_error:
+                            error_log_file = f'{dataPath}{dataLogPath}/error_{tmp_logName}.txt'
+                            try:
+                                os.rename(dataLogFile, error_log_file)
+                                with open(dataLogFile, 'w', encoding='utf-8') as f:
+                                    f.write('{}')
+                            except Exception as e:
+                                traceback.print_exc()
+                                log_error = True
+
+                    except Exception as e:
+                        traceback.print_exc()
+                        log_error = True
+                else:
+                    try:
+                        with open(dataLogFile, 'w', encoding='utf-8') as f:
+                            f.write('{}')
+                    except Exception as e:
+                        traceback.print_exc()
+                        log_error = True
+
+                log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+                dictTValue['tLogLines'] = str(log_lines)
+                dictTValue['tLogUUID'] = tmp_log_uuid
+            
+                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+            
+                if active_log_name == log_name:
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logEnable',
+                        userConfigValue = False,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logActiveName',
+                        userConfigValue = None,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+            
+                # 强制生成.trpglog文件
+                success = OlivaDiceLogger.logger.releaseLogFile(tmp_logName)
+                if not success:
+                    # 如果生成失败，创建一个文件显示日志已损坏
+                    dataLogFile_1 = f'{dataPath}{dataLogPath}/{tmp_logName}.trpglog'
+                    with open(dataLogFile_1, 'w', encoding='utf-8') as f:
+                        f.write('日志已损坏')
+            
+                dictTValue['tLogName'] = log_name
+                if not log_error:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogStop'], dictTValue)
+                else:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogStopError'], dictTValue)
+
+                replyMsg(plugin_event, tmp_reply_str)
+            
+                if log_name in log_name_list:
+                    log_name_list.remove(log_name)
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logNameList',
+                        userConfigValue = log_name_list,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                    
+                    if log_name in log_name_dict:
+                        del log_name_dict[log_name]
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logNameDict',
+                            userConfigValue = log_name_dict,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+            
+                OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                    userHash = OlivaDiceCore.userConfig.getUserHash(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                )
+                return
+
+            elif isMatchWordStart(tmp_reast_str, 'upload'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'upload')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+
+                if not tmp_reast_str.strip():
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUploadNoName'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_uuid = tmp_reast_str.strip()
+                log_name = None
+                
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                log_files = [f for f in os.listdir(f'{dataPath}{dataLogPath}') 
+                           if f.startswith(f'log_{log_uuid}_') and f.endswith('.trpglog')]
+                
+                if log_files:
+                    # 从文件名中提取log_name
+                    log_name = log_files[0].replace(f'log_{log_uuid}_', '').replace('.trpglog', '')
+                
+                if not log_name:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogFileNotFound'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                tmp_logName = f'log_{log_uuid}_{log_name}'
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                dataLogFile_1 = f'{dataPath}{dataLogPath}/{tmp_logName}.trpglog'
+
+                try:
+                    OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = log_uuid
+                    dictTValue['tLogUrl'] = f'{OlivaDiceLogger.data.dataLogPainterUrl}{tmp_logName}'
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUploadSuccess'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                except Exception as e:
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUploadFailed'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    traceback.print_exc()
+                return
             else:
                 replyMsgLazyHelpByEvent(plugin_event, 'log')
             return
