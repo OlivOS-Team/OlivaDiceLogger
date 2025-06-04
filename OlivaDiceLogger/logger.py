@@ -323,12 +323,17 @@ def loggerEntry(event, funcType, sender, dectData, message):
             loggerIOLock.release()
     pass
 
-def releaseLogFile(logName):
+def releaseLogFile(logName, temp=False):
     check_and_process_compatibility()
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
+    
+    if temp:
+        dataLogFile_1 = '%s%s/%s_temp.trpglog' % (dataPath, dataLogPath, logName)
+    else:
+        dataLogFile_1 = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
+    
     dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)
-    dataLogFile_1 = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
     
     if not os.path.exists(dataLogFile):
         return False
