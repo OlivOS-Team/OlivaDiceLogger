@@ -41,6 +41,8 @@ dictStrCustom = {
     'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
     'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogUploadFailed': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传失败，请稍后再试',
+    'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
+    'strLoggerLogNameNotFound': '本群日志列表中未找到名称为[{tLogName}]的日志',
     'strLoggerLogTempSuccess': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传成功，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogTempFailed': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传失败，请稍后再试'
 }

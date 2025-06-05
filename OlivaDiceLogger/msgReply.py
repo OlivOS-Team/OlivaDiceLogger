@@ -794,7 +794,7 @@ def unity_reply(plugin_event, Proc):
                     log_name = tmp_reast_str.strip()
 
                 if log_name is None:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogTempNotFound'], dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     return
 
@@ -808,7 +808,7 @@ def unity_reply(plugin_event, Proc):
 
                 if log_name not in log_name_list:
                     dictTValue['tLogName'] = log_name
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogFileNotFound'], dictTValue)
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogNameNotFound'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     return
 
@@ -825,7 +825,6 @@ def unity_reply(plugin_event, Proc):
                 
                 # 生成临时日志文件（添加 _temp 后缀）
                 if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, temp=True):
-                    # 上传临时日志文件
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName + '_temp')
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = tmp_log_uuid
