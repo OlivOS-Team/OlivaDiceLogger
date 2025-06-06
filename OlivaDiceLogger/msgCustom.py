@@ -40,7 +40,11 @@ dictStrCustom = {
     'strLoggerLogUploadNoName': '请指定要上传的日志的UUID',
     'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
     'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，请在[ {tLogUrl} ]提取日志',
-    'strLoggerLogUploadFailed': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传失败，请稍后再试'
+    'strLoggerLogUploadFailed': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传失败，请稍后再试',
+    'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
+    'strLoggerLogNameNotFound': '本群日志列表中未找到名称为[{tLogName}]的日志',
+    'strLoggerLogTempSuccess': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传成功，请在[ {tLogUrl} ]提取日志',
+    'strLoggerLogTempFailed': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传失败，请稍后再试'
 }
 
 dictStrConst = {
@@ -51,16 +55,20 @@ dictGValue = {
 
 dictTValue = {
     'tLogName': 'N/A',
+    'tLogUUID': 'N/A',
+    'tLogList': 'N/A',
+    'tLogLines': 'N/A',
     'tLogUrl': 'N/A'
 }
 
 dictHelpDocTemp = {
     'log': '''跑团日志记录
-.log on [名字] 开始记录日志（默认名称或指定）
+.log on [名字] 开始记录日志(默认名称或指定)
 .log off [名字] 暂停记录指定或当前日志
 .log end [名字] 完成记录并发送日志文件
-.log list 查看本群日志列表
+.log temp [名字] 临时上传指定的日志(不影响记录)
 .log stop [名字] 强制停止日志不上传
+.log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志(必须为已经end/stop的日志)
 若不带名字则默认名字为default
 日志上传存在失败可能，届时请联系后台管理索取''',

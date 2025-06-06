@@ -778,6 +778,68 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     traceback.print_exc()
                 return
+            elif isMatchWordStart(tmp_reast_str, 'temp'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'temp')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+
+                log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+
+                if tmp_reast_str.strip() != '':
+                    log_name = tmp_reast_str.strip()
+
+                if log_name is None:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameList',
+                    botHash = plugin_event.bot_info.hash
+                ) or []
+
+                if log_name not in log_name_list:
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogNameNotFound'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
+                ) or {}
+
+                tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                
+                # 生成临时日志文件（添加 _temp 后缀）
+                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, temp=True):
+                    OlivaDiceLogger.logger.uploadLogFile(tmp_logName + '_temp')
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = tmp_log_uuid
+                    dictTValue['tLogUrl'] = '%s%s_temp' % (
+                        OlivaDiceLogger.data.dataLogPainterUrl,
+                        tmp_logName
+                    )
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogTempSuccess'], dictTValue)
+                else:
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = tmp_log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogTempFailed'], dictTValue)
+
+                replyMsg(plugin_event, tmp_reply_str)
+                return
             else:
                 replyMsgLazyHelpByEvent(plugin_event, 'log')
             return
