@@ -44,7 +44,11 @@ dictStrCustom = {
     'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
     'strLoggerLogNameNotFound': '本群日志列表中未找到名称为[{tLogName}]的日志',
     'strLoggerLogTempSuccess': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传成功，请在[ {tLogUrl} ]提取日志',
-    'strLoggerLogTempFailed': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传失败，请稍后再试'
+    'strLoggerLogTempFailed': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传失败，请稍后再试',
+    'strLoggerLogRenameSuccess': '日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
+    'strLoggerLogRenameActiveSuccess': '当前活动日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
+    'strLoggerLogRenameSameName': '新名称 [{tLogName}] 与旧日志名称相同',
+    'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在'
 }
 
 dictStrConst = {
@@ -68,6 +72,7 @@ dictHelpDocTemp = {
 .log end [名字] 完成记录并发送日志文件
 .log temp [名字] 临时上传指定的日志(不影响记录)
 .log stop [名字] 强制停止日志不上传
+.log rename 新名字[/旧名字] 重命名活动日志或指定日志；若重命名指定日志，新旧名字用 '/' 分隔
 .log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志(必须为已经end/stop的日志)
 若不带名字则默认名字为default
