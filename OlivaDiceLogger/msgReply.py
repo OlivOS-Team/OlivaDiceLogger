@@ -287,8 +287,6 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logNameDict',
                     botHash = plugin_event.bot_info.hash
                 ) or {}
-                
-                # 优先使用当前记录日志
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
@@ -296,15 +294,12 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logActiveName',
                     botHash = plugin_event.bot_info.hash
                 )
-
-                # 如果用户指定了日志名，则使用指定的
                 if tmp_reast_str.strip() != '':
                     log_name = tmp_reast_str.strip()
 
                 if log_name is None:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
                 else:
-                    # 检查是否是当前记录日志
                     active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                         userId = tmp_hagID,
                         userType = 'group',
