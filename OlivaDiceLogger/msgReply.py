@@ -287,8 +287,6 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logNameDict',
                     botHash = plugin_event.bot_info.hash
                 ) or {}
-                
-                # 优先使用当前记录日志
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
@@ -296,15 +294,12 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logActiveName',
                     botHash = plugin_event.bot_info.hash
                 )
-
-                # 如果用户指定了日志名，则使用指定的
                 if tmp_reast_str.strip() != '':
                     log_name = tmp_reast_str.strip()
 
                 if log_name is None:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
                 else:
-                    # 检查是否是当前记录日志
                     active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                         userId = tmp_hagID,
                         userType = 'group',
@@ -837,6 +832,157 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = tmp_log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogTempFailed'], dictTValue)
+
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+            elif isMatchWordStart(tmp_reast_str, 'rename'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'rename')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                            
+                parts = tmp_reast_str.split('/', 1)
+                new_name = parts[0].strip()
+                old_name = parts[1].strip() if len(parts) > 1 else None
+
+                if not OlivaDiceLogger.logger.is_valid_log_name(new_name) or new_name == '':
+                    dictTValue['tLogName'] = new_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogInvalidName'], 
+                        dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                if old_name is None:
+                    old_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId=tmp_hagID,
+                        userType='group',
+                        platform=plugin_event.platform['platform'],
+                        userConfigKey='logActiveName',
+                        botHash=plugin_event.bot_info.hash
+                    )
+
+                    if old_name is None or old_log_name == '':
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogAlreadyOff'], 
+                            dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
+
+                if old_name == new_name:
+                    dictTValue['tLogName'] = new_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogRenameSameName'], 
+                        dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameList',
+                    botHash=plugin_event.bot_info.hash
+                ) or []
+
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameDict',
+                    botHash=plugin_event.bot_info.hash
+                ) or {}
+
+                if old_name not in log_name_list:
+                    dictTValue['tLogName'] = old_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogNotFound'], 
+                        dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                if new_name in log_name_list:
+                    dictTValue['tLogName'] = new_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogRenameNameExists'], 
+                        dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_uuid = log_name_dict.get(old_name, str(uuid.uuid4()))
+
+                log_name_list[log_name_list.index(old_name)] = new_name
+                log_name_dict[new_name] = log_uuid
+                del log_name_dict[old_name]
+
+                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logActiveName',
+                    botHash=plugin_event.bot_info.hash
+                )
+
+                if active_log_name == old_name:
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey='logActiveName',
+                        userConfigValue=new_name,
+                        botHash=plugin_event.bot_info.hash,
+                        userId=tmp_hagID,
+                        userType='group',
+                        platform=plugin_event.platform['platform']
+                    )
+
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey='logNameList',
+                    userConfigValue=log_name_list,
+                    botHash=plugin_event.bot_info.hash,
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform']
+                )
+
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey='logNameDict',
+                    userConfigValue=log_name_dict,
+                    botHash=plugin_event.bot_info.hash,
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform']
+                )
+
+                # 重命名日志文件
+                old_log_name = f'log_{log_uuid}_{old_name}'
+                new_log_name = f'log_{log_uuid}_{new_name}'
+
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+
+                for ext in ['.olivadicelog', '.trpglog', '_temp.trpglog']:
+                    old_file = f'{dataPath}{dataLogPath}/{old_log_name}{ext}'
+                    new_file = f'{dataPath}{dataLogPath}/{new_log_name}{ext}'
+                    if os.path.exists(old_file):
+                        try:
+                            os.rename(old_file, new_file)
+                        except Exception as e:
+                            traceback.print_exc()
+
+                dictTValue['tLogOldName'] = old_name
+                dictTValue['tLogNewName'] = new_name
+
+                if active_log_name == old_name:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogRenameActiveSuccess'], 
+                        dictTValue
+                    )
+                else:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogRenameSuccess'], 
+                        dictTValue
+                    )
 
                 replyMsg(plugin_event, tmp_reply_str)
                 return
