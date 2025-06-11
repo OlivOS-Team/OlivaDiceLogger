@@ -46,8 +46,7 @@ dictStrCustom = {
     'strLoggerLogRenameSuccess': '日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
     'strLoggerLogRenameActiveSuccess': '当前活动日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
     'strLoggerLogRenameSameName': '新名称 [{tLogName}] 与旧日志名称相同',
-    'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在',
-    'strLoggerLogSwitch': '已切换到日志 [{tLogName}]',
+    'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在'
 }
 
 dictStrConst = {

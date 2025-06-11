@@ -36,12 +36,13 @@ _compatibility_processed = False
 def check_and_process_compatibility():
     global _compatibility_processed
     if not _compatibility_processed:
-        # 兼容性处理
+        migrate_database_config()
         dataPath = OlivaDiceLogger.data.dataPath
         dataLogPath = OlivaDiceLogger.data.dataLogPath
         log_dir = f'{dataPath}{dataLogPath}'
+        
         if os.path.exists(log_dir):
-            extensions = ['.olivadicelog', '.trpglog']
+            extensions = ['.olivadicelog', '.trpglog', '_temp.trpglog']
             for ext in extensions:
                 for filename in os.listdir(log_dir):
                     if filename.endswith(ext) and '_' not in filename.replace('log_', '', 1):
@@ -54,6 +55,28 @@ def check_and_process_compatibility():
                                 f'{log_dir}/{new_name}'
                             )
         _compatibility_processed = True
+
+def migrate_database_config():
+    for userHash in OlivaDiceCore.userConfig.dictUserConfigData:
+        for botHash in OlivaDiceCore.userConfig.dictUserConfigData[userHash]:
+            config = OlivaDiceCore.userConfig.dictUserConfigData[userHash][botHash]
+            if config.get('userType') != 'group':
+                continue
+            logNowName = config.get('configNote', {}).get('logNowName')
+            logNameList = config.get('configNote', {}).get('logNameList', [])
+            if logNowName and not logNameList:
+                # 从logNowName提取UUID（去掉"log_"前缀）
+                log_uuid = logNowName.replace('log_', '', 1)
+                # 设置default
+                config['configNote']['logActiveName'] = 'default'
+                config['configNote']['logNameList'] = ['default']
+                config['configNote']['logNameDict'] = {'default': log_uuid}
+                config['configNote']['logNowName'] = None
+                OlivaDiceCore.userConfig.listUserConfigDataUpdate.append(userHash)
+
+    for userHash in set(OlivaDiceCore.userConfig.listUserConfigDataUpdate):
+        OlivaDiceCore.userConfig.writeUserConfigByUserHash(userHash)
+    OlivaDiceCore.userConfig.listUserConfigDataUpdate = []
 
 def init_logger(plugin_event, Proc):
     check_and_process_compatibility()
