@@ -861,7 +861,7 @@ def unity_reply(plugin_event, Proc):
                         botHash=plugin_event.bot_info.hash
                     )
 
-                    if old_name is None or old_log_name == '':
+                    if old_name is None or old_name == '':
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                             dictStrCustom['strLoggerLogAlreadyOff'], 
                             dictTValue
