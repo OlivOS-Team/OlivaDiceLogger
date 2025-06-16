@@ -788,7 +788,7 @@ def unity_reply(plugin_event, Proc):
                 if tmp_reast_str.strip() != '':
                     log_name = tmp_reast_str.strip()
 
-                if log_name is None:
+                if not log_name:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOff'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     return
@@ -852,7 +852,7 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     return
 
-                if old_name is None:
+                if not old_name:
                     old_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                         userId=tmp_hagID,
                         userType='group',
@@ -861,7 +861,7 @@ def unity_reply(plugin_event, Proc):
                         botHash=plugin_event.bot_info.hash
                     )
 
-                    if old_name is None or old_log_name == '':
+                    if not old_name:
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                             dictStrCustom['strLoggerLogAlreadyOff'], 
                             dictTValue
