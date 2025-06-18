@@ -17,6 +17,7 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 import OlivOS
 import OlivaDiceLogger
 import OlivaDiceCore
+import urllib.parse
 
 import hashlib
 import time
@@ -420,9 +421,10 @@ def unity_reply(plugin_event, Proc):
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
+                    encoded_logName = urllib.parse.quote(tmp_logName)
                     dictTValue['tLogUrl'] = '%s%s' % (
                         OlivaDiceLogger.data.dataLogPainterUrl,
-                        tmp_logName
+                        encoded_logName
                     )
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
@@ -763,7 +765,8 @@ def unity_reply(plugin_event, Proc):
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = log_uuid
-                    dictTValue['tLogUrl'] = f'{OlivaDiceLogger.data.dataLogPainterUrl}{tmp_logName}'
+                    encoded_logName = urllib.parse.quote(tmp_logName)
+                    dictTValue['tLogUrl'] = f'{OlivaDiceLogger.data.dataLogPainterUrl}{encoded_logName}'
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUploadSuccess'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                 except Exception as e:
@@ -823,9 +826,10 @@ def unity_reply(plugin_event, Proc):
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName + '_temp')
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = tmp_log_uuid
+                    encoded_logName = urllib.parse.quote(tmp_logName)
                     dictTValue['tLogUrl'] = '%s%s_temp' % (
                         OlivaDiceLogger.data.dataLogPainterUrl,
-                        tmp_logName
+                        encoded_logName
                     )
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogTempSuccess'], dictTValue)
                 else:
