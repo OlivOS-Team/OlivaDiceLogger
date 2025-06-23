@@ -35,6 +35,7 @@ dictStrCustom = {
     'strLoggerLogListEmpty': '本群暂无日志',
     'strLoggerLogStop': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (当前已记录 {tLogLines} 行)',
     'strLoggerLogStopError': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (日志已损坏)',
+    'strLoggerLogActiveSwitch': '已切换活跃日志为 [{tLogName}]',
     'strLoggerLogUploadNoName': '请指定要上传的日志的UUID',
     'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
     'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，请在[ {tLogUrl} ]提取日志',
@@ -65,14 +66,16 @@ dictTValue = {
 
 dictHelpDocTemp = {
     'log': '''跑团日志记录
-.log on [名字] 开始记录日志
+.log on (名字) 开始记录日志
     记录的日志名可以是默认名称或指定名称
-.log off [名字] 暂停记录指定或当前日志
-.log end [名字] 完成记录并发送日志文件
-.log temp [名字] 临时上传指定的日志
-    临时上传日志不影响记录
-.log stop [名字] 强制停止日志不上传
-.log rename 新名字[/旧名字] 重命名活动日志或指定日志
+.log off (名字) 暂停记录指定日志或当前日志
+.log end (名字) 完成记录并发送日志文件
+.log temp (名字) 临时上传指定的日志
+    临时上传日志不影响记录，若不指定名字则默认为活跃日志
+.log stop (名字) 强制停止日志不上传
+    若不指定名字则默认为活跃日志
+.log active [名字] 切换活跃日志
+.log rename 新名字(/旧名字) 重命名活跃日志或指定日志
     若重命名指定日志，新旧名字用 '/' 分隔
 .log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志

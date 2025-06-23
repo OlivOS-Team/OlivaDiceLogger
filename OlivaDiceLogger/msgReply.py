@@ -997,6 +997,70 @@ def unity_reply(plugin_event, Proc):
 
                 replyMsg(plugin_event, tmp_reply_str)
                 return
+            elif isMatchWordStart(tmp_reast_str, 'active'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'active')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                
+                # 检查是否正在记录
+                is_logging = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logEnable',
+                    botHash = plugin_event.bot_info.hash
+                )
+
+                if is_logging:
+                    active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = plugin_event.bot_info.hash
+                    )
+                    dictTValue['tLogName'] = active_log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOn'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                    
+                log_name = tmp_reast_str.strip()
+                if not log_name:
+                    replyMsgLazyHelpByEvent(plugin_event, 'log')
+                    return
+                    
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameList',
+                    botHash=plugin_event.bot_info.hash
+                ) or []
+                
+                if log_name not in log_name_list:
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogNotFound'], 
+                        dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                    
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey='logActiveName',
+                    userConfigValue=log_name,
+                    botHash=plugin_event.bot_info.hash,
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform']
+                )
+                
+                dictTValue['tLogName'] = log_name
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogActiveSwitch'], 
+                    dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
             else:
                 replyMsgLazyHelpByEvent(plugin_event, 'log')
             return
