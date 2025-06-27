@@ -115,13 +115,16 @@ def format_duration(seconds):
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
+    res = ''
     
     if hours > 0:
-        return f"{hours}小时{minutes}分{seconds}秒"
+        res += f"{hours}小时"
     if minutes > 0:
-        return f"{minutes}分{seconds}秒"
+        res += f"{minutes}分"
     if seconds > 0:
-        return f"{seconds}秒"
+        res += f"{seconds}秒"
+        
+    return res
 
 def add_logger_lazy_reply_func(target_func):
     @wraps(target_func)
