@@ -642,7 +642,7 @@ def unity_reply(plugin_event, Proc):
                             if log_name_time_dict[name]['start_time'] > 0 and log_name_time_dict[name]['end_time'] == 0:
                                 current_duration = time.time() - log_name_time_dict[name]['start_time']
                                 total_duration += current_duration
-                            time_info = f" (日志总时长: {OlivaDiceLogger.logger.format_duration(int(total_duration))})"
+                            time_info = f" (总时长: {OlivaDiceLogger.logger.format_duration(int(total_duration))})"
                         
                         if name == active_log_name:
                             log_list_str.append(f"- {name} (当前日志){time_info}")
