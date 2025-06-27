@@ -23,25 +23,25 @@ dictStrCustomDict = {}
 dictStrCustom = {
     'strLoggerLogOn': '开始记录日志 [{tLogName}]',
     'strLoggerLogAlreadyOn': '已经正在记录日志 [{tLogName}]',
-    'strLoggerLogContinue': '继续记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
+    'strLoggerLogContinue': '继续记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogInvalidName': '日志名称 [{tLogName}] 不合法',
-    'strLoggerLogOff': '暂停记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
+    'strLoggerLogOff': '暂停记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
-    'strLoggerLogEnd': '结束记录日志 [{tLogName}] (当前已记录 {tLogLines} 行)',
+    'strLoggerLogEnd': '结束记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
     'strLoggerLogSave': '日志 [{tLogName}] (UUID: {tLogUUID}) 已保存',
     'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogList': '本群有以下日志:\n{tLogList}',
     'strLoggerLogListEmpty': '本群暂无日志',
-    'strLoggerLogStop': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (当前已记录 {tLogLines} 行)',
+    'strLoggerLogStop': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogStopError': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (日志已损坏)',
     'strLoggerLogActiveSwitch': '已切换活跃日志为 [{tLogName}]',
     'strLoggerLogUploadNoName': '请指定要上传的日志的UUID',
     'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
-    'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，请在[ {tLogUrl} ]提取日志',
+    'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，日志总时长: {tLogTime}，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogUploadFailed': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传失败，请稍后再试',
     'strLoggerLogNameNotFound': '本群日志列表中未找到名称为[{tLogName}]的日志',
-    'strLoggerLogTempSuccess': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传成功，请在[ {tLogUrl} ]提取日志',
+    'strLoggerLogTempSuccess': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传成功，日志总时长: {tLogTime}，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogTempFailed': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传失败，请稍后再试',
     'strLoggerLogNotFound': '未找到日志 [{tLogName}]',
     'strLoggerLogRenameSuccess': '日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
@@ -61,7 +61,8 @@ dictTValue = {
     'tLogUUID': 'N/A',
     'tLogList': 'N/A',
     'tLogLines': 'N/A',
-    'tLogUrl': 'N/A'
+    'tLogUrl': 'N/A',
+    'tLogTime': '0秒'
 }
 
 dictHelpDocTemp = {
