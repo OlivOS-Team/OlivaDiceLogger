@@ -22,7 +22,8 @@ dictUserConfigNoteDefault = {
     'logNowName' : None,
     'logActiveName': None,
     'logNameList' : [],
-    'logNameDict' : {}
+    'logNameDict' : {},
+    'logNameTimeDict' : {}
 }
 
 def initUserConfigNoteDefault(bot_info_dict):

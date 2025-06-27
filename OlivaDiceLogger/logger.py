@@ -60,10 +60,11 @@ def migrate_database_config():
     for userHash in OlivaDiceCore.userConfig.dictUserConfigData:
         for botHash in OlivaDiceCore.userConfig.dictUserConfigData[userHash]:
             config = OlivaDiceCore.userConfig.dictUserConfigData[userHash][botHash]
-            if config.get('userType') != 'group':
+            if config.get('userType',"") != 'group':
                 continue
             logNowName = config.get('configNote', {}).get('logNowName')
             logNameList = config.get('configNote', {}).get('logNameList', [])
+            logNameTimeDict = config.get('configNote', {}).get('logNameTimeDict', {})
             if logNowName and not logNameList:
                 # 从logNowName提取UUID（去掉"log_"前缀）
                 log_uuid = logNowName.replace('log_', '', 1)
@@ -71,7 +72,23 @@ def migrate_database_config():
                 config['configNote']['logActiveName'] = 'default'
                 config['configNote']['logNameList'] = ['default']
                 config['configNote']['logNameDict'] = {'default': log_uuid}
+                config['configNote']['logNameTimeDict']['default'] = {
+                    'start_time': 0,
+                    'end_time': 0,
+                    'total_time': 0                    
+                }
                 config['configNote']['logNowName'] = None
+                OlivaDiceCore.userConfig.listUserConfigDataUpdate.append(userHash)
+            if logNameList:
+                # 时间兼容
+                for name in logNameList:
+                    if name not in logNameTimeDict:
+                        logNameTimeDict[name] = {
+                            'start_time': 0,
+                            'end_time': 0,
+                            'total_time': 0
+                        }
+                config['configNote']['logNameTimeDict'] = logNameTimeDict
                 OlivaDiceCore.userConfig.listUserConfigDataUpdate.append(userHash)
 
     for userHash in set(OlivaDiceCore.userConfig.listUserConfigDataUpdate):
@@ -89,6 +106,22 @@ def init_logger(plugin_event, Proc):
         )
     except Exception as e:
         traceback.print_exc()
+
+# 时间函数
+def format_duration(seconds):
+    if seconds <= 0:
+        return "0秒"
+    
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+    
+    if hours > 0:
+        return f"{hours}小时{minutes}分{seconds}秒"
+    if minutes > 0:
+        return f"{minutes}分{seconds}秒"
+    if seconds > 0:
+        return f"{seconds}秒"
 
 def add_logger_lazy_reply_func(target_func):
     @wraps(target_func)
@@ -362,11 +395,34 @@ def releaseLogFile(logName, temp=False):
         return False
         
     tmp_dataLogFile = None
+    total_duration = 0
     try:
-        with open(dataLogFile, 'r+', encoding = 'utf-8' , errors='ignore' ) as dataLogFile_f:
+        # 尝试从日志文件名解析日志名称和UUID
+        log_name_parts = logName.split('_')
+        if len(log_name_parts) >= 3:
+            log_uuid = log_name_parts[1]
+            log_name = "_".join(log_name_parts[2:])
+            # 从所有群组配置中查找匹配的时间记录
+            for userHash in OlivaDiceCore.userConfig.dictUserConfigData:
+                for botHash in OlivaDiceCore.userConfig.dictUserConfigData[userHash]:
+                    config = OlivaDiceCore.userConfig.dictUserConfigData[userHash][botHash]
+                    if config.get('userType') == 'group':
+                        logNameTimeDict = config.get('configNote', {}).get('logNameTimeDict', {})
+                        if log_name in logNameTimeDict:
+                            total_duration = logNameTimeDict[log_name]['total_time']
+                            break
+            # 如果不是临时日志，在olivadicelog末尾添加总时长记录
+            if not temp:
+                total_record = {
+                    'type': 'log_total_duration',
+                    'total_time': total_duration
+                }
+                with open(dataLogFile, 'a', encoding='utf-8') as f:
+                    f.write(json.dumps(total_record, ensure_ascii=False) + '\n')
+        with open(dataLogFile, 'r+', encoding='utf-8', errors='ignore') as dataLogFile_f:
             tmp_dataLogFile = dataLogFile_f.read()
         
-        if tmp_dataLogFile != None:
+        if tmp_dataLogFile:
             tmp_dataLogFile = tmp_dataLogFile.strip('\n')
             tmp_dataLogFile_list = tmp_dataLogFile.split('\n')
             res_logFile_str = ''
@@ -376,14 +432,16 @@ def releaseLogFile(logName, temp=False):
                     tmp_dataLog_json = json.loads(tmp_dataLogFile_list_this)
                 except:
                     tmp_dataLog_json = None
-                if tmp_dataLog_json != None:
-                    # 跳过增加删除标记的消息
+                if tmp_dataLog_json:
+                    # 跳过已删除消息和总时长记录
                     if tmp_dataLog_json.get('deleted', False):
+                        continue
+                    if tmp_dataLog_json.get('type') == 'log_total_duration':
                         continue
                     res_logFile_str += '%s(%s) %s\n%s\n' % (
                         str(tmp_dataLog_json['sender']['name']),
                         str(tmp_dataLog_json['sender']['id']),
-                        str(time.strftime('%H:%M:%S', time.localtime(tmp_dataLog_json['time']))),
+                        str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tmp_dataLog_json['time']))),
                         str(tmp_dataLog_json['message'])
                     )
             with open(dataLogFile_1, 'w+', encoding = 'utf-8') as dataLogFile_f:
