@@ -110,18 +110,21 @@ def init_logger(plugin_event, Proc):
 # 时间函数
 def format_duration(seconds):
     if seconds <= 0:
-        return "0秒"
+        return "0s"
     
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     seconds = seconds % 60
+    res = ''
     
     if hours > 0:
-        return f"{hours}小时{minutes}分{seconds}秒"
+        res += f"{hours}h"
     if minutes > 0:
-        return f"{minutes}分{seconds}秒"
+        res += f"{minutes}m"
     if seconds > 0:
-        return f"{seconds}秒"
+        res += f"{seconds}s"
+        
+    return res
 
 def add_logger_lazy_reply_func(target_func):
     @wraps(target_func)
