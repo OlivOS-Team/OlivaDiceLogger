@@ -76,7 +76,7 @@ dictHelpDocTemp = {
 .log stop (名字) 强制停止日志不上传
     若不指定名字则默认为活跃日志
 .log active [名字] 切换活跃日志
-.log rename 新名字(/旧名字) 重命名活跃日志或指定日志
+.log rename [新名字](/旧名字) 重命名活跃日志或指定日志
     若重命名指定日志，新旧名字用 '/' 分隔
 .log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志
