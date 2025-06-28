@@ -110,7 +110,7 @@ def init_logger(plugin_event, Proc):
 # 时间函数
 def format_duration(seconds):
     if seconds <= 0:
-        return "0秒"
+        return "0s"
     
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
@@ -118,11 +118,11 @@ def format_duration(seconds):
     res = ''
     
     if hours > 0:
-        res += f"{hours}小时"
+        res += f"{hours}h"
     if minutes > 0:
-        res += f"{minutes}分"
+        res += f"{minutes}m"
     if seconds > 0:
-        res += f"{seconds}秒"
+        res += f"{seconds}s"
         
     return res
 

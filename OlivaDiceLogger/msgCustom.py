@@ -62,7 +62,7 @@ dictTValue = {
     'tLogList': 'N/A',
     'tLogLines': 'N/A',
     'tLogUrl': 'N/A',
-    'tLogTime': '0秒'
+    'tLogTime': '0s'
 }
 
 dictHelpDocTemp = {
