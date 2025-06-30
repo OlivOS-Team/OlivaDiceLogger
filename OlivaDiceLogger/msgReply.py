@@ -1165,8 +1165,8 @@ def unity_reply(plugin_event, Proc):
 
                 replyMsg(plugin_event, tmp_reply_str)
                 return
-            elif isMatchWordStart(tmp_reast_str, 'active'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'active')
+            elif isMatchWordStart(tmp_reast_str, 'set'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'set')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 
                 # 检查是否正在记录
