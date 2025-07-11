@@ -488,10 +488,12 @@ def unity_reply(plugin_event, Proc):
                     )
 
                 # 显示时间
+                total_duration = 0
                 if log_name in log_name_time_dict:
                     time_record = log_name_time_dict[log_name]
                     current_time = time.time()
-                    if time_record['start_time'] > 0:
+                    # 如果正在记录中，加上当前时长
+                    if time_record['start_time'] > 0 and time_record['end_time'] == 0:
                         duration = current_time - time_record['start_time']
                         time_record['total_time'] += duration
                     total_duration = time_record['total_time']
@@ -502,7 +504,7 @@ def unity_reply(plugin_event, Proc):
                 tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogEnd'], dictTValue)
                 replyMsg(plugin_event, tmp_reply_str)
 
-                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName):
+                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration):
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = tmp_log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
@@ -806,18 +808,19 @@ def unity_reply(plugin_event, Proc):
                     )
 
                 # 显示时间
+                total_duration = 0
                 if log_name in log_name_time_dict:
                     time_record = log_name_time_dict[log_name]
                     current_time = time.time()
-                    if time_record['start_time'] > 0:
+                    # 如果正在记录中，加上当前时长
+                    if time_record['start_time'] > 0 and time_record['end_time'] == 0:
                         duration = current_time - time_record['start_time']
                         time_record['total_time'] += duration
                     total_duration = time_record['total_time']
                     formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
                     dictTValue['tLogTime'] = formatted_duration
-            
                 # 强制生成.trpglog文件
-                success = OlivaDiceLogger.logger.releaseLogFile(tmp_logName)
+                success = OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration)
                 if not success:
                     # 如果生成失败，创建一个文件显示日志已损坏
                     dataLogFile_1 = f'{dataPath}{dataLogPath}/{tmp_logName}.trpglog'
@@ -990,19 +993,20 @@ def unity_reply(plugin_event, Proc):
 
                 tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
                 tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
-
+                total_duration = 0
                 if log_name in log_name_time_dict:
                     time_record = log_name_time_dict[log_name]
-                    total_duration = time_record['total_time']
+                    current_time = time.time()
                     # 如果正在记录中，加上当前时长
                     if time_record['start_time'] > 0 and time_record['end_time'] == 0:
-                        current_duration = time.time() - time_record['start_time']
-                        total_duration += current_duration
+                        duration = current_time - time_record['start_time']
+                        time_record['total_time'] += duration
+                    total_duration = time_record['total_time']
                     formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
                     dictTValue['tLogTime'] = formatted_duration
                 
                 # 生成临时日志文件（添加 _temp 后缀）
-                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, temp=True):
+                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration, temp=True):
                     OlivaDiceLogger.logger.uploadLogFile(tmp_logName + '_temp')
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = tmp_log_uuid

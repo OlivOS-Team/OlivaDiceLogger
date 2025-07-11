@@ -382,38 +382,24 @@ def loggerEntry(event, funcType, sender, dectData, message):
             loggerIOLock.release()
     pass
 
-def releaseLogFile(logName, temp=False):
+def releaseLogFile(logName, total_duration = 0, temp = False):
     check_and_process_compatibility()
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
-    
     if temp:
         dataLogFile_1 = '%s%s/%s_temp.trpglog' % (dataPath, dataLogPath, logName)
     else:
         dataLogFile_1 = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
-    
     dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)
-    
     if not os.path.exists(dataLogFile):
         return False
-        
     tmp_dataLogFile = None
-    total_duration = 0
     try:
         # 尝试从日志文件名解析日志名称和UUID
         log_name_parts = logName.split('_')
         if len(log_name_parts) >= 3:
             log_uuid = log_name_parts[1]
             log_name = "_".join(log_name_parts[2:])
-            # 从所有群组配置中查找匹配的时间记录
-            for userHash in OlivaDiceCore.userConfig.dictUserConfigData:
-                for botHash in OlivaDiceCore.userConfig.dictUserConfigData[userHash]:
-                    config = OlivaDiceCore.userConfig.dictUserConfigData[userHash][botHash]
-                    if config.get('userType') == 'group':
-                        logNameTimeDict = config.get('configNote', {}).get('logNameTimeDict', {})
-                        if log_name in logNameTimeDict:
-                            total_duration = logNameTimeDict[log_name]['total_time']
-                            break
             # 如果不是临时日志，在olivadicelog末尾添加总时长记录
             if not temp:
                 total_record = {
@@ -424,7 +410,6 @@ def releaseLogFile(logName, temp=False):
                     f.write(json.dumps(total_record, ensure_ascii=False) + '\n')
         with open(dataLogFile, 'r+', encoding='utf-8', errors='ignore') as dataLogFile_f:
             tmp_dataLogFile = dataLogFile_f.read()
-        
         if tmp_dataLogFile:
             tmp_dataLogFile = tmp_dataLogFile.strip('\n')
             tmp_dataLogFile_list = tmp_dataLogFile.split('\n')
