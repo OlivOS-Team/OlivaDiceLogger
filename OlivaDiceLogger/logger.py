@@ -212,30 +212,30 @@ def handle_message_recall(event):
         tmp_hagID = f"{host_id}|{group_id}" if host_id else str(group_id)
         
         if not OlivaDiceCore.userConfig.getUserConfigByKey(
-            userId=tmp_hagID,
-            userType='group',
-            platform=event.platform['platform'],
-            userConfigKey='logEnable',
-            botHash=event.bot_info.hash
+            userId = tmp_hagID,
+            userType = 'group',
+            platform = event.platform['platform'],
+            userConfigKey = 'logEnable',
+            botHash = event.bot_info.hash
         ):
             return
 
         log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
-            userId=tmp_hagID,
-            userType='group',
-            platform=event.platform['platform'],
-            userConfigKey='logActiveName',
-            botHash=event.bot_info.hash
+            userId = tmp_hagID,
+            userType = 'group',
+            platform = event.platform['platform'],
+            userConfigKey = 'logActiveName',
+            botHash = event.bot_info.hash
         )
         if not log_name:
             return
 
         log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
-            userId=tmp_hagID,
-            userType='group',
-            platform=event.platform['platform'],
-            userConfigKey='logNameDict',
-            botHash=event.bot_info.hash
+            userId = tmp_hagID,
+            userType = 'group',
+            platform = event.platform['platform'],
+            userConfigKey = 'logNameDict',
+            botHash = event.bot_info.hash
         ) or {}
         log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
         tmp_logName = f'log_{log_uuid}_{log_name}'
