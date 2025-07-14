@@ -221,11 +221,11 @@ def unity_reply(plugin_event, Proc):
                 ) or {}
 
                 log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logNameTimeDict',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameTimeDict',
+                    botHash = plugin_event.bot_info.hash
                 ) or {}
                         
                 if log_name not in log_name_list:
@@ -272,30 +272,30 @@ def unity_reply(plugin_event, Proc):
                 )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey='logNameList',
-                    userConfigValue=log_name_list,
-                    botHash=plugin_event.bot_info.hash,
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform']
+                    userConfigKey = 'logNameList',
+                    userConfigValue = log_name_list,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
                 )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey='logNameDict',
-                    userConfigValue=log_name_dict,
-                    botHash=plugin_event.bot_info.hash,
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform']
+                    userConfigKey = 'logNameDict',
+                    userConfigValue = log_name_dict,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
                 )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey='logNameTimeDict',
-                    userConfigValue=log_name_time_dict,
-                    botHash=plugin_event.bot_info.hash,
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform']
+                    userConfigKey = 'logNameTimeDict',
+                    userConfigValue = log_name_time_dict,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
                 )
 
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
@@ -313,11 +313,11 @@ def unity_reply(plugin_event, Proc):
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
 
                 is_logging = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logEnable',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logEnable',
+                    botHash = plugin_event.bot_info.hash
                 )
 
                 if not is_logging:
@@ -329,30 +329,30 @@ def unity_reply(plugin_event, Proc):
                     return
 
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logActiveName',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
                 )
 
                 if tmp_reast_str.strip() != '':
                     log_name = tmp_reast_str.strip()
 
                 log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logNameDict',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameDict',
+                    botHash = plugin_event.bot_info.hash
                 ) or {}
                 
                 log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logNameTimeDict',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameTimeDict',
+                    botHash = plugin_event.bot_info.hash
                 ) or {}
                 
                 tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
@@ -372,21 +372,21 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogTime'] = formatted_duration
                 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey='logNameTimeDict',
-                    userConfigValue=log_name_time_dict,
-                    botHash=plugin_event.bot_info.hash,
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform']
+                    userConfigKey = 'logNameTimeDict',
+                    userConfigValue = log_name_time_dict,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
                 )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey='logEnable',
+                    userConfigKey = 'logEnable',
                     userConfigValue=False,
-                    botHash=plugin_event.bot_info.hash,
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform']
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
                 )
 
                 dictTValue['tLogLines'] = str(log_lines)
@@ -398,9 +398,9 @@ def unity_reply(plugin_event, Proc):
 
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash=OlivaDiceCore.userConfig.getUserHash(
-                        userId=tmp_hagID,
-                        userType='group',
-                        platform=plugin_event.platform['platform']
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
                     )
                 )
                 replyMsg(plugin_event, tmp_reply_str)
@@ -543,12 +543,12 @@ def unity_reply(plugin_event, Proc):
                         if log_name in log_name_time_dict:
                             del log_name_time_dict[log_name]
                             OlivaDiceCore.userConfig.setUserConfigByKey(
-                                userConfigKey='logNameTimeDict',
-                                userConfigValue=log_name_time_dict,
-                                botHash=plugin_event.bot_info.hash,
-                                userId=tmp_hagID,
-                                userType='group',
-                                platform=plugin_event.platform['platform']
+                                userConfigKey = 'logNameTimeDict',
+                                userConfigValue = log_name_time_dict,
+                                botHash = plugin_event.bot_info.hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform']
                             )
 
                     try:
@@ -984,11 +984,11 @@ def unity_reply(plugin_event, Proc):
                 ) or {}
 
                 log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logNameTimeDict',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameTimeDict',
+                    botHash = plugin_event.bot_info.hash
                 ) or {}
 
                 tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
@@ -1228,11 +1228,11 @@ def unity_reply(plugin_event, Proc):
                     return
                     
                 log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform'],
-                    userConfigKey='logNameList',
-                    botHash=plugin_event.bot_info.hash
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logNameList',
+                    botHash = plugin_event.bot_info.hash
                 ) or []
                 
                 if log_name not in log_name_list:
@@ -1245,12 +1245,12 @@ def unity_reply(plugin_event, Proc):
                     return
                     
                 OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey='logActiveName',
-                    userConfigValue=log_name,
-                    botHash=plugin_event.bot_info.hash,
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=plugin_event.platform['platform']
+                    userConfigKey = 'logActiveName',
+                    userConfigValue = log_name,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
                 )
                 
                 dictTValue['tLogName'] = log_name
