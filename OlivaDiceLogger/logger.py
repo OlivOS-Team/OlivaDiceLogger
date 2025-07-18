@@ -286,7 +286,6 @@ def is_valid_log_name(name):
     return True
 
 def get_log_lines(log_name):
-    check_and_process_compatibility()
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
     dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, log_name)
@@ -302,7 +301,6 @@ def get_log_lines(log_name):
         return 0
 
 def check_log_file_exists(log_name):
-    check_and_process_compatibility()
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
     olivadicelog_file = f'{dataPath}{dataLogPath}/{log_name}.olivadicelog'
@@ -383,7 +381,6 @@ def loggerEntry(event, funcType, sender, dectData, message):
     pass
 
 def releaseLogFile(logName, total_duration = 0, temp = False):
-    check_and_process_compatibility()
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
     if temp:
