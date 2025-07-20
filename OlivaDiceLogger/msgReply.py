@@ -163,8 +163,8 @@ def unity_reply(plugin_event, Proc):
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
 
-            if isMatchWordStart(tmp_reast_str, 'on'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'on')
+            if isMatchWordStart(tmp_reast_str, ['on','new']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['on','new'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
 
                 is_logging = OlivaDiceCore.userConfig.getUserConfigByKey(
@@ -684,8 +684,8 @@ def unity_reply(plugin_event, Proc):
                 replyMsg(plugin_event, tmp_reply_str)
                 return
             
-            elif isMatchWordStart(tmp_reast_str, 'stop'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'stop')
+            elif isMatchWordStart(tmp_reast_str, ['stop','halt']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['stop','halt'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
@@ -941,8 +941,8 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     traceback.print_exc()
                 return
-            elif isMatchWordStart(tmp_reast_str, 'temp'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'temp')
+            elif isMatchWordStart(tmp_reast_str, ['temp','get']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['temp','get'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
 
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
