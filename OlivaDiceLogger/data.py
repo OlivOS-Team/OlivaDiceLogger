@@ -21,6 +21,8 @@ OlivaDiceLogger_ver_short = '%s(%s)' % (str(OlivaDiceLogger_ver), str(OlivaDiceL
 
 dataPath = './plugin/data/OlivaDice/unity'
 dataLogPath = '/logger'
+dataCompatibilityPath = '/logger_compatibility'
+dataCompatibilityFlagFile = 'compatibility_done'
 
 dataLogUpload = 'http://api.dice.center/dicelogger/'
 dataLogPainterUrl = 'https://logrender.dice.center/#2-'

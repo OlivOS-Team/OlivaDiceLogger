@@ -30,31 +30,34 @@ from functools import wraps
 
 gLoggerIOLockMap = {}
 
-# 兼容性处理只做一次
-_compatibility_processed = False
-
 def check_and_process_compatibility():
-    global _compatibility_processed
-    if not _compatibility_processed:
-        migrate_database_config()
-        dataPath = OlivaDiceLogger.data.dataPath
-        dataLogPath = OlivaDiceLogger.data.dataLogPath
-        log_dir = f'{dataPath}{dataLogPath}'
-        
-        if os.path.exists(log_dir):
-            extensions = ['.olivadicelog', '.trpglog', '_temp.trpglog']
-            for ext in extensions:
-                for filename in os.listdir(log_dir):
-                    if filename.endswith(ext) and '_' not in filename.replace('log_', '', 1):
-                        base_name = filename[:-len(ext)]
-                        clean_name = base_name.replace('log_', '', 1)
-                        new_name = f'log_{clean_name}_default{ext}'
-                        if not os.path.exists(f'{log_dir}/{new_name}'):
-                            os.rename(
-                                f'{log_dir}/{filename}',
-                                f'{log_dir}/{new_name}'
-                            )
-        _compatibility_processed = True
+    # 兼容改为创建文件，只做一次，之后不做
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    compatibility_dir = f'{dataPath}{dataLogPath}{OlivaDiceLogger.data.dataCompatibilityPath}'
+    compatibility_flag = f'{compatibility_dir}/{OlivaDiceLogger.data.dataCompatibilityFlagFile}'
+    if os.path.exists(compatibility_flag):
+        return
+    if not os.path.exists(compatibility_dir):
+        os.makedirs(compatibility_dir)
+    # 执行兼容性处理
+    migrate_database_config()
+    log_dir = f'{dataPath}{dataLogPath}'
+    if os.path.exists(log_dir):
+        import glob
+        for ext in ['.olivadicelog', '.trpglog', '_temp.trpglog']:
+            pattern = os.path.join(log_dir, f'*{ext}')
+            for filepath in glob.glob(pattern):
+                filename = os.path.basename(filepath)
+                if '_' not in filename.replace('log_', '', 1):
+                    base_name = filename[:-len(ext)]
+                    clean_name = base_name.replace('log_', '', 1)
+                    new_name = f'log_{clean_name}_default{ext}'
+                    new_path = os.path.join(log_dir, new_name)
+                    if not os.path.exists(new_path):
+                        os.rename(filepath, new_path)
+    with open(compatibility_flag, 'w', encoding='utf-8') as f:
+        f.write(f'已成功于[{time.strftime("%Y-%m-%d %H:%M:%S")}]执行日志文件兼容性处理')
 
 def migrate_database_config():
     for userHash in OlivaDiceCore.userConfig.dictUserConfigData:
