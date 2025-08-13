@@ -99,8 +99,8 @@ def migrate_database_config():
     OlivaDiceCore.userConfig.listUserConfigDataUpdate = []
 
 def init_logger(plugin_event, Proc):
-    check_and_process_compatibility()
     releaseDir('%s%s' % (OlivaDiceLogger.data.dataPath, OlivaDiceLogger.data.dataLogPath))
+    check_and_process_compatibility()
     OlivaDiceCore.crossHook.dictHookFunc['msgHook'] = add_logger_func(OlivaDiceCore.crossHook.dictHookFunc['msgHook'])
     try:
         import OlivOSOnebotV11
