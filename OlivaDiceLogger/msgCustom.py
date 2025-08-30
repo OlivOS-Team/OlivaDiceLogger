@@ -47,7 +47,9 @@ dictStrCustom = {
     'strLoggerLogRenameSuccess': '日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
     'strLoggerLogRenameActiveSuccess': '当前活动日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
     'strLoggerLogRenameSameName': '新名称 [{tLogName}] 与旧日志名称相同',
-    'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在'
+    'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在',
+    'strLoggerLogStatus': '当前日志状态:\n名称: {tLogName}\nUUID: {tLogUUID}\n状态: {tLogStatus}\n行数: {tLogLines}\n总时长: {tLogTime}',
+    'strLoggerLogStatusNoLog': '当前没有活跃日志'
 }
 
 dictStrConst = {
@@ -62,6 +64,7 @@ dictTValue = {
     'tLogList': 'N/A',
     'tLogLines': 'N/A',
     'tLogUrl': 'N/A',
+    'tLogStatus': 'N/A',
     'tLogTime': '0s'
 }
 
@@ -71,6 +74,7 @@ dictHelpDocTemp = {
     记录的日志名可以是默认名称或指定名称
 .log off (名字) 暂停记录指定日志或当前日志
 .log end (名字) 完成记录并发送日志文件
+.log status (名字) - 查看指定日志或当前日志的状态
 .log temp (名字) 临时上传指定的日志
     临时上传日志不影响记录，若不指定名字则默认为活跃日志
 .log stop (名字) 强制停止日志不上传
@@ -82,6 +86,7 @@ dictHelpDocTemp = {
 .log upload [UUID] 手动上传指定UUID的日志
     指定UUID的日志必须为已经end/stop的日志
 
+输入 .log 不带参数为查看当前日志状态
 日志的默认名称为 default
 日志上传存在失败可能，届时请联系后台管理索取''',
 
