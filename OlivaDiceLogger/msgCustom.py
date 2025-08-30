@@ -48,7 +48,7 @@ dictStrCustom = {
     'strLoggerLogRenameActiveSuccess': '当前活动日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
     'strLoggerLogRenameSameName': '新名称 [{tLogName}] 与旧日志名称相同',
     'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在',
-    'strLoggerLogStatus': '当前日志状态:\n名称: {tLogName}\nUUID: {tLogUUID}\n状态: {tLogStatus}\n行数: {tLogLines}\n总时长: {tLogTime}',
+    'strLoggerLogStatus': '[{tLogName}]日志状态:\nUUID: {tLogUUID}\n状态: {tLogStatus}\n行数: {tLogLines}\n总时长: {tLogTime}',
     'strLoggerLogStatusNoLog': '当前没有活跃日志'
 }
 
