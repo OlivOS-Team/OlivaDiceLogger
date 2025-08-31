@@ -941,8 +941,8 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     traceback.print_exc()
                 return
-            elif isMatchWordStart(tmp_reast_str, ['temp','get']):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['temp','get'])
+            elif isMatchWordStart(tmp_reast_str, ['temp','get','tmp']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['temp','get','tmp'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
 
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
