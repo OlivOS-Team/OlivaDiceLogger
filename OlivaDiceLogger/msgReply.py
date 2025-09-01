@@ -1260,21 +1260,52 @@ def unity_reply(plugin_event, Proc):
                 )
                 replyMsg(plugin_event, tmp_reply_str)
                 return
-            elif isMatchWordStart(tmp_reast_str, 'status'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'status')
+            elif isMatchWordStart(tmp_reast_str, ['status','stat']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['status','stat'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 # 获取指定的日志名称，如果没有指定则使用当前活跃日志
-                specified_log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
-                tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, specified_log_name)
+                log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
+                if log_name is None:
+                    log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = plugin_event.bot_info.hash
+                    )
+                    if not log_name:
+                        return OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatusNoLog'], 
+                            dictTValue
+                        )
+                tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name)
                 replyMsg(plugin_event, tmp_reply_str)
             else:
-                # 获取指定的日志名称，如果没有指定则使用当前活跃日志
-                specified_log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
-                tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, specified_log_name)
+                log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
+                # 获取当前活跃日志
+                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+                # 这里判断是如果是单 log 指令的情况下没有活跃日志，那么返回 NoLog 自定义条目
+                if not active_log_name:
+                    return OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogStatusNoLog'], 
+                        dictTValue
+                    )
+                # 如果是通过.log查看日志状态，没有名称的话，就返回helper
+                if log_name:
+                    replyMsgLazyHelpByEvent(plugin_event, 'log')
+                    return
+                tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name)
                 replyMsg(plugin_event, tmp_reply_str)
             return
 
-def get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name=None):
+def get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name = None):
+    # 虽然前面判断过了，但是为了保险起见这里还是判断一下
     # 如果没有指定日志名称，使用活跃日志
     if log_name is None:
         log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
