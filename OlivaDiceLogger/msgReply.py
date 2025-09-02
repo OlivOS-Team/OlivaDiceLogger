@@ -323,7 +323,7 @@ def unity_reply(plugin_event, Proc):
                     try:
                         # 尝试构造引用回复消息
                         reply_with_reference = f'[CQ:reply,id={last_message_id}]{tmp_reply_str}'
-                        plugin_event.reply(reply_with_reference)
+                        replyMsg(plugin_event, reply_with_reference)
                         return
                     except:
                         # 如果引用回复失败，回退到正常回复
