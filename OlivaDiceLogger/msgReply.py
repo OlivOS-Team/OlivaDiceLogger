@@ -319,7 +319,7 @@ def unity_reply(plugin_event, Proc):
                 )
                 
                 # 如果是继续日志且有最后一个 message_id ，尝试引用回复
-                if is_continue and last_message_id:
+                if is_continue and last_message_id and plugin_event.platform['platform'] == 'qq':
                     try:
                         # 尝试构造引用回复消息
                         reply_with_reference = f'[CQ:reply,id={last_message_id}]{tmp_reply_str}'
