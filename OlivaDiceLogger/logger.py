@@ -460,3 +460,20 @@ def uploadLogFile(logName):
 def releaseDir(dir_path):
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
+
+def get_last_message_id(log_file_path):
+    """获取日志文件中最后一个有效的message_id"""
+    last_message_id = None
+    if os.path.exists(log_file_path):
+        try:
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        log_entry = json.loads(line.strip())
+                        if not log_entry.get('deleted', False) and 'message_id' in log_entry:
+                            last_message_id = log_entry['message_id']
+                    except:
+                        continue
+        except:
+            pass
+    return last_message_id

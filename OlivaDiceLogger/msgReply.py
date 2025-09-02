@@ -227,7 +227,19 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logNameTimeDict',
                     botHash = plugin_event.bot_info.hash
                 ) or {}
-                        
+
+                is_continue = log_name in log_name_list
+                last_message_id = None
+
+                if is_continue:
+                    # 获取最后一个message_id
+                    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                    tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                    dataPath = OlivaDiceLogger.data.dataPath
+                    dataLogPath = OlivaDiceLogger.data.dataLogPath
+                    dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                    last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
+
                 if log_name not in log_name_list:
                     log_name_list.append(log_name)
                     log_name_dict[log_name] = str(uuid.uuid4())
@@ -305,9 +317,20 @@ def unity_reply(plugin_event, Proc):
                         platform = plugin_event.platform['platform']
                     )
                 )
+                
+                # 如果是继续日志且有最后一个 message_id ，尝试引用回复
+                if is_continue and last_message_id and plugin_event.platform['platform'] == 'qq':
+                    try:
+                        # 尝试构造引用回复消息
+                        reply_with_reference = f'[CQ:reply,id={last_message_id}]{tmp_reply_str}'
+                        replyMsg(plugin_event, reply_with_reference)
+                        return
+                    except:
+                        # 如果引用回复失败，回退到正常回复
+                        pass
+                # 正常回复
                 replyMsg(plugin_event, tmp_reply_str)
                 return
-
             elif isMatchWordStart(tmp_reast_str, 'off'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'off')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
@@ -664,19 +687,24 @@ def unity_reply(plugin_event, Proc):
 
                     log_list_str = []
                     for name in active_logs:
-                        time_info = ""
-                        if name in log_name_time_dict:
-                            total_duration = log_name_time_dict[name]['total_time']
-                            # 如果正在记录中，加上日志时长
-                            if log_name_time_dict[name]['start_time'] > 0 and log_name_time_dict[name]['end_time'] == 0:
-                                current_duration = time.time() - log_name_time_dict[name]['start_time']
-                                total_duration += current_duration
-                            time_info = f" (总时长: {OlivaDiceLogger.logger.format_duration(int(total_duration))})"
+                        # time_info = ""
+                        # if name in log_name_time_dict:
+                        #     total_duration = log_name_time_dict[name]['total_time']
+                        #     # 如果正在记录中，加上日志时长
+                        #     if log_name_time_dict[name]['start_time'] > 0 and log_name_time_dict[name]['end_time'] == 0:
+                        #         current_duration = time.time() - log_name_time_dict[name]['start_time']
+                        #         total_duration += current_duration
+                        #     time_info = f" (总时长: {OlivaDiceLogger.logger.format_duration(int(total_duration))})"
                         
+                        # if name == active_log_name:
+                        #     log_list_str.append(f"- {name} (当前日志){time_info}")
+                        # else:
+                        #     log_list_str.append(f"- {name}{time_info}")
+
                         if name == active_log_name:
-                            log_list_str.append(f"- {name} (当前日志){time_info}")
+                            log_list_str.append(f"- {name} (当前日志)")
                         else:
-                            log_list_str.append(f"- {name}{time_info}")
+                            log_list_str.append(f"- {name}")
 
                     dictTValue['tLogList'] = '\n'.join(log_list_str)
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogList'], dictTValue)
@@ -941,8 +969,8 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     traceback.print_exc()
                 return
-            elif isMatchWordStart(tmp_reast_str, ['temp','get']):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['temp','get'])
+            elif isMatchWordStart(tmp_reast_str, ['temp','get','tmp']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['temp','get','tmp'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
 
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
@@ -1260,6 +1288,132 @@ def unity_reply(plugin_event, Proc):
                 )
                 replyMsg(plugin_event, tmp_reply_str)
                 return
+            elif isMatchWordStart(tmp_reast_str, 'status'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'status')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                # 获取指定的日志名称，如果没有指定则使用当前活跃日志
+                log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
+                if log_name is None:
+                    log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = plugin_event.bot_info.hash
+                    )
+                    if not log_name:
+                        return OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatusNoLog'], 
+                            dictTValue
+                        )
+                tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name)
+                replyMsg(plugin_event, tmp_reply_str)
             else:
-                replyMsgLazyHelpByEvent(plugin_event, 'log')
+                log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
+                # 获取当前活跃日志
+                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logActiveName',
+                    botHash = plugin_event.bot_info.hash
+                )
+                # 这里判断是如果是单 log 指令的情况下没有活跃日志，那么返回 NoLog 自定义条目
+                if not active_log_name:
+                    return OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogStatusNoLog'], 
+                        dictTValue
+                    )
+                # 如果是通过.log查看日志状态，没有名称的话，就返回helper
+                if log_name:
+                    replyMsgLazyHelpByEvent(plugin_event, 'log')
+                    return
+                tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name)
+                replyMsg(plugin_event, tmp_reply_str)
             return
+
+def get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name = None):
+    # 虽然前面判断过了，但是为了保险起见这里还是判断一下
+    # 如果没有指定日志名称，使用活跃日志
+    if log_name is None:
+        log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+            userId = tmp_hagID,
+            userType = 'group',
+            platform = plugin_event.platform['platform'],
+            userConfigKey = 'logActiveName',
+            botHash = plugin_event.bot_info.hash
+        )
+        if not log_name:
+            return OlivaDiceCore.msgCustomManager.formatReplySTR(
+                dictStrCustom['strLoggerLogStatusNoLog'], 
+                dictTValue
+            )
+    # 检查日志是否存在
+    log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId = tmp_hagID,
+        userType = 'group',
+        platform = plugin_event.platform['platform'],
+        userConfigKey = 'logNameList',
+        botHash = plugin_event.bot_info.hash
+    ) or []
+    
+    if log_name not in log_name_list:
+        dictTValue['tLogName'] = log_name
+        return OlivaDiceCore.msgCustomManager.formatReplySTR(
+            dictStrCustom['strLoggerLogNameNotFound'], 
+            dictTValue
+        )
+    # 检查日志是否正在记录
+    is_logging = False
+    active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId = tmp_hagID,
+        userType = 'group',
+        platform = plugin_event.platform['platform'],
+        userConfigKey = 'logActiveName',
+        botHash = plugin_event.bot_info.hash
+    )
+    if log_name == active_log_name:
+        is_logging = OlivaDiceCore.userConfig.getUserConfigByKey(
+            userId = tmp_hagID,
+            userType = 'group',
+            platform = plugin_event.platform['platform'],
+            userConfigKey = 'logEnable',
+            botHash = plugin_event.bot_info.hash
+        )
+    log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId = tmp_hagID,
+        userType = 'group',
+        platform = plugin_event.platform['platform'],
+        userConfigKey = 'logNameDict',
+        botHash = plugin_event.bot_info.hash
+    ) or {}
+    log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId = tmp_hagID,
+        userType = 'group',
+        platform = plugin_event.platform['platform'],
+        userConfigKey = 'logNameTimeDict',
+        botHash = plugin_event.bot_info.hash
+    ) or {}
+    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+    tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+    log_lines = OlivaDiceLogger.logger.get_log_lines(tmp_logName)
+    # 计算总时长
+    total_duration = 0
+    if log_name in log_name_time_dict:
+        time_record = log_name_time_dict[log_name]
+        current_time = time.time()
+        total_duration = time_record['total_time']
+        # 如果正在记录中，加上当前时长
+        if log_name == active_log_name and is_logging:
+            duration = current_time - time_record['start_time']
+            total_duration += duration
+    formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
+    dictTValue['tLogName'] = log_name
+    dictTValue['tLogUUID'] = tmp_log_uuid
+    dictTValue['tLogStatus'] = '开启' if (log_name == active_log_name and is_logging) else '关闭'
+    dictTValue['tLogLines'] = str(log_lines)
+    dictTValue['tLogTime'] = formatted_duration
+    return OlivaDiceCore.msgCustomManager.formatReplySTR(
+        dictStrCustom['strLoggerLogStatus'], 
+        dictTValue
+    )
