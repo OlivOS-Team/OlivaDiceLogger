@@ -227,7 +227,19 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logNameTimeDict',
                     botHash = plugin_event.bot_info.hash
                 ) or {}
-                        
+
+                is_continue = log_name in log_name_list
+                last_message_id = None
+
+                if is_continue:
+                    # 获取最后一个message_id
+                    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                    tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                    dataPath = OlivaDiceLogger.data.dataPath
+                    dataLogPath = OlivaDiceLogger.data.dataLogPath
+                    dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                    last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
+
                 if log_name not in log_name_list:
                     log_name_list.append(log_name)
                     log_name_dict[log_name] = str(uuid.uuid4())
@@ -305,9 +317,20 @@ def unity_reply(plugin_event, Proc):
                         platform = plugin_event.platform['platform']
                     )
                 )
+                
+                # 如果是继续日志且有最后一个 message_id ，尝试引用回复
+                if is_continue and last_message_id:
+                    try:
+                        # 尝试构造引用回复消息
+                        reply_with_reference = f'[CQ:reply,id={last_message_id}]{tmp_reply_str}'
+                        plugin_event.reply(reply_with_reference)
+                        return
+                    except:
+                        # 如果引用回复失败，回退到正常回复
+                        pass
+                # 正常回复
                 replyMsg(plugin_event, tmp_reply_str)
                 return
-
             elif isMatchWordStart(tmp_reast_str, 'off'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'off')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
