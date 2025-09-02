@@ -1265,8 +1265,8 @@ def unity_reply(plugin_event, Proc):
                 )
                 replyMsg(plugin_event, tmp_reply_str)
                 return
-            elif isMatchWordStart(tmp_reast_str, ['status','stat']):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['status','stat'])
+            elif isMatchWordStart(tmp_reast_str, 'status'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'status')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 # 获取指定的日志名称，如果没有指定则使用当前活跃日志
                 log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
