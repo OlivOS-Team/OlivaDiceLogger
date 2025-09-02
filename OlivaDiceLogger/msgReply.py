@@ -664,19 +664,24 @@ def unity_reply(plugin_event, Proc):
 
                     log_list_str = []
                     for name in active_logs:
-                        time_info = ""
-                        if name in log_name_time_dict:
-                            total_duration = log_name_time_dict[name]['total_time']
-                            # 如果正在记录中，加上日志时长
-                            if log_name_time_dict[name]['start_time'] > 0 and log_name_time_dict[name]['end_time'] == 0:
-                                current_duration = time.time() - log_name_time_dict[name]['start_time']
-                                total_duration += current_duration
-                            time_info = f" (总时长: {OlivaDiceLogger.logger.format_duration(int(total_duration))})"
+                        # time_info = ""
+                        # if name in log_name_time_dict:
+                        #     total_duration = log_name_time_dict[name]['total_time']
+                        #     # 如果正在记录中，加上日志时长
+                        #     if log_name_time_dict[name]['start_time'] > 0 and log_name_time_dict[name]['end_time'] == 0:
+                        #         current_duration = time.time() - log_name_time_dict[name]['start_time']
+                        #         total_duration += current_duration
+                        #     time_info = f" (总时长: {OlivaDiceLogger.logger.format_duration(int(total_duration))})"
                         
+                        # if name == active_log_name:
+                        #     log_list_str.append(f"- {name} (当前日志){time_info}")
+                        # else:
+                        #     log_list_str.append(f"- {name}{time_info}")
+
                         if name == active_log_name:
-                            log_list_str.append(f"- {name} (当前日志){time_info}")
+                            log_list_str.append(f"- {name} (当前日志)")
                         else:
-                            log_list_str.append(f"- {name}{time_info}")
+                            log_list_str.append(f"- {name}")
 
                     dictTValue['tLogList'] = '\n'.join(log_list_str)
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogList'], dictTValue)
