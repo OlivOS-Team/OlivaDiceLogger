@@ -21,6 +21,7 @@ dictUserConfigNoteDefault = {
     'logEnable' : False,
     'logNowName' : None,
     'logActiveName': None,
+    'logQuote' : False,
     'logNameList' : [],
     'logNameDict' : {},
     'logNameTimeDict' : {}

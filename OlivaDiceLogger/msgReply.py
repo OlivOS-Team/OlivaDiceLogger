@@ -318,13 +318,21 @@ def unity_reply(plugin_event, Proc):
                     )
                 )
                 
-                # 如果是继续日志且有最后一个 message_id ，尝试引用回复
-                if is_continue and last_message_id and plugin_event.platform['platform'] == 'qq':
+                log_quote = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform'],
+                    userConfigKey = 'logQuote',
+                    botHash = plugin_event.bot_info.hash,
+                    default = False
+                )
+                # 如果是继续日志且有最后一个 message_id 并且开启了 log quote，尝试引用回复
+                if is_continue and last_message_id and log_quote and plugin_event.platform['platform'] == 'qq':
                     try:
                         # 尝试构造引用回复消息
-                        reply_with_reference = f'[CQ:reply,id={last_message_id}]{tmp_reply_str}'
-                        replyMsg(plugin_event, reply_with_reference)
-                        return
+                        tmp_reply_str_2 = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuote'], dictTValue)
+                        reply_with_quote = f'[CQ:reply,id={last_message_id}]{tmp_reply_str_2}'
+                        replyMsg(plugin_event, reply_with_quote)
                     except:
                         # 如果引用回复失败，回退到正常回复
                         pass
@@ -1288,6 +1296,87 @@ def unity_reply(plugin_event, Proc):
                 )
                 replyMsg(plugin_event, tmp_reply_str)
                 return
+            elif isMatchWordStart(tmp_reast_str, ['quote','reply']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['quote','reply'])
+                tmp_pc_platform = plugin_event.platform['platform']
+                auto_sn_enabled = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = tmp_pc_platform,
+                    userConfigKey = 'logQuote',
+                    botHash = plugin_event.bot_info.hash,
+                    default = False
+                )
+                if isMatchWordStart(tmp_reast_str, 'on', fullMatch = True):
+                    # log quote on 命令
+                    if auto_sn_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteAlreadyOn'], dictTValue)
+                    else:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logQuote',
+                            userConfigValue = True,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = tmp_pc_platform
+                        )
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash = OlivaDiceCore.userConfig.getUserHash(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = tmp_pc_platform
+                            )
+                        )
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteOn'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                elif isMatchWordStart(tmp_reast_str, 'off', fullMatch = True):
+                    # log quote off 命令
+                    if not auto_sn_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteAlreadyOff'], dictTValue)
+                    else:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logQuote',
+                            userConfigValue = False,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = tmp_pc_platform
+                        )
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash = OlivaDiceCore.userConfig.getUserHash(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = tmp_pc_platform
+                            )
+                        )
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteOff'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                else:
+                    # 默认切换逻辑
+                    new_auto_sn_enabled = not auto_sn_enabled
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logQuote',
+                        userConfigValue = new_auto_sn_enabled,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = tmp_pc_platform
+                    )
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = tmp_pc_platform
+                        )
+                    )
+                    if new_auto_sn_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteOn'], dictTValue)
+                    else:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteOff'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
             elif isMatchWordStart(tmp_reast_str, 'status'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'status')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
