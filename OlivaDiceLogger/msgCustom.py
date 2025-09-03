@@ -49,7 +49,12 @@ dictStrCustom = {
     'strLoggerLogRenameSameName': '新名称 [{tLogName}] 与旧日志名称相同',
     'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在',
     'strLoggerLogStatus': '[{tLogName}]日志状态:\nUUID: {tLogUUID}\n当前状态: {tLogStatus}\n日志行数: {tLogLines}\n日志总时长: {tLogTime}',
-    'strLoggerLogStatusNoLog': '当前没有活跃日志'
+    'strLoggerLogStatusNoLog': '当前没有活跃日志',
+    'strLoggerLogQuote': '此处为上次日志结束消息',
+    'strLoggerLogQuoteOn' : "本群已开启自动引用上次结束日志功能",
+    'strLoggerLogQuoteAlreadyOn' : "本群自动引用上次结束日志功能已处于开启状态",
+    'strLoggerLogQuoteOff' : "本群已关闭自动引用上次结束日志功能",
+    'strLoggerLogQuoteAlreadyOff' : "本群自动引用上次结束日志功能已处于关闭状态",
 }
 
 dictStrConst = {
@@ -85,6 +90,9 @@ dictHelpDocTemp = {
 .log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志
     指定UUID的日志必须为已经end/stop的日志
+.log quote 切换自动引用上次日志回复功能
+.log quote on 开启自动引用上次日志回复功能
+.log quote off 关闭自动引用上次日志回复功能
 
 输入 .log 不带参数为查看当前日志状态
 日志的默认名称为 default
