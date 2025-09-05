@@ -48,9 +48,9 @@ dictStrCustom = {
     'strLoggerLogRenameActiveSuccess': '当前活动日志 [{tLogOldName}] 已重命名为 [{tLogNewName}]',
     'strLoggerLogRenameSameName': '新名称 [{tLogName}] 与旧日志名称相同',
     'strLoggerLogRenameNameExists': '日志名称 [{tLogName}] 已存在',
-    'strLoggerLogStatus': '[{tLogName}]日志状态:\nUUID: {tLogUUID}\n当前状态: {tLogStatus}\n日志行数: {tLogLines}\n日志总时长: {tLogTime}',
+    'strLoggerLogStatus': '[{tLogName}] 日志状态:\nUUID: {tLogUUID}\n当前状态: {tLogStatus}\n日志行数: {tLogLines}\n日志总时长: {tLogTime}',
     'strLoggerLogStatusNoLog': '当前没有活跃日志',
-    'strLoggerLogQuote': '此处为上次日志结束消息',
+    'strLoggerLogQuote': '此处为 [{tLogName}] 日志结束消息',
     'strLoggerLogQuoteOn' : "本群已开启自动引用上次结束日志功能",
     'strLoggerLogQuoteAlreadyOn' : "本群自动引用上次结束日志功能已处于开启状态",
     'strLoggerLogQuoteOff' : "本群已关闭自动引用上次结束日志功能",
@@ -90,9 +90,10 @@ dictHelpDocTemp = {
 .log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志
     指定UUID的日志必须为已经end/stop的日志
-.log quote 切换自动引用上次日志回复功能
-.log quote on 开启自动引用上次日志回复功能
-.log quote off 关闭自动引用上次日志回复功能
+.log quote (名字) 引用当前活跃日志/指定日志功能
+    若平台不为QQ或者Bot未记录上次结束日志的消息，则无法引用
+.log quote on 开启自动引用上次日志功能
+.log quote off 关闭自动引用上次日志功能
 
 输入 .log 不带参数为查看当前日志状态
 日志的默认名称为 default

@@ -330,6 +330,7 @@ def unity_reply(plugin_event, Proc):
                 if is_continue and last_message_id and log_quote and plugin_event.platform['platform'] == 'qq':
                     try:
                         # 尝试构造引用回复消息
+                        dictTValue['tLogName'] = log_name
                         tmp_reply_str_2 = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuote'], dictTValue)
                         reply_with_quote = f'[CQ:reply,id={last_message_id}]{tmp_reply_str_2}'
                         replyMsg(plugin_event, reply_with_quote)
@@ -1298,8 +1299,10 @@ def unity_reply(plugin_event, Proc):
                 return
             elif isMatchWordStart(tmp_reast_str, ['quote','reply']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['quote','reply'])
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 tmp_pc_platform = plugin_event.platform['platform']
-                auto_sn_enabled = OlivaDiceCore.userConfig.getUserConfigByKey(
+                # 处理 log quote on/off 命令
+                log_quote_enabled = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
                     platform = tmp_pc_platform,
@@ -1309,7 +1312,7 @@ def unity_reply(plugin_event, Proc):
                 )
                 if isMatchWordStart(tmp_reast_str, 'on', fullMatch = True):
                     # log quote on 命令
-                    if auto_sn_enabled:
+                    if log_quote_enabled:
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteAlreadyOn'], dictTValue)
                     else:
                         OlivaDiceCore.userConfig.setUserConfigByKey(
@@ -1332,7 +1335,7 @@ def unity_reply(plugin_event, Proc):
                     return
                 elif isMatchWordStart(tmp_reast_str, 'off', fullMatch = True):
                     # log quote off 命令
-                    if not auto_sn_enabled:
+                    if not log_quote_enabled:
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteAlreadyOff'], dictTValue)
                     else:
                         OlivaDiceCore.userConfig.setUserConfigByKey(
@@ -1354,29 +1357,79 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     return
                 else:
-                    # 默认切换逻辑
-                    new_auto_sn_enabled = not auto_sn_enabled
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logQuote',
-                        userConfigValue = new_auto_sn_enabled,
-                        botHash = plugin_event.bot_info.hash,
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = tmp_pc_platform
-                    )
-                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
-                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                    # 如果没有其他参数，尝试引用活跃日志
+                    if not tmp_reast_str.strip():
+                        # 获取当前活跃日志
+                        log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = tmp_pc_platform
+                            platform = plugin_event.platform['platform'],
+                            userConfigKey = 'logActiveName',
+                            botHash = plugin_event.bot_info.hash
                         )
-                    )
-                    if new_auto_sn_enabled:
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteOn'], dictTValue)
+                        if not log_name:
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogStatusNoLog'], 
+                                dictTValue
+                            )
+                            replyMsg(plugin_event, tmp_reply_str)
+                            return
                     else:
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuoteOff'], dictTValue)
+                        log_name = tmp_reast_str.strip()
+
+                    # 检查日志是否存在
+                    log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameList',
+                        botHash = plugin_event.bot_info.hash
+                    ) or []
+
+                    if log_name not in log_name_list:
+                        dictTValue['tLogName'] = log_name
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogNotFound'], 
+                            dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
+
+                    # 获取最后一个message_id
+                    log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = plugin_event.bot_info.hash
+                    ) or {}
+
+                    tmp_log_uuid = log_name_dict.get(log_name, str(uuid.uuid4()))
+                    tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
+                    dataPath = OlivaDiceLogger.data.dataPath
+                    dataLogPath = OlivaDiceLogger.data.dataLogPath
+                    dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                    last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
+                    dictTValue['tLogName'] = log_name
+                    if last_message_id and plugin_event.platform['platform'] == 'qq':
+                        try:
+                            # 尝试构造引用回复消息
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogQuote'], 
+                                dictTValue
+                            )
+                            reply_with_quote = f'[CQ:reply,id={last_message_id}]{tmp_reply_str}'
+                            replyMsg(plugin_event, reply_with_quote)
+                            return
+                        except:
+                            # 如果引用回复失败，回退到正常回复
+                            pass
+
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogQuote'], 
+                        dictTValue
+                    )
                     replyMsg(plugin_event, tmp_reply_str)
-                    return
             elif isMatchWordStart(tmp_reast_str, 'status'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'status')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
