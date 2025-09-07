@@ -327,16 +327,30 @@ def unity_reply(plugin_event, Proc):
                     default = False
                 )
                 # 如果是继续日志且有最后一个 message_id 并且开启了 log quote，尝试引用回复
-                if is_continue and last_message_id and log_quote and plugin_event.platform['platform'] == 'qq':
-                    try:
-                        # 尝试构造引用回复消息
+                if is_continue and last_message_id and log_quote:
+                    if plugin_event.platform['platform'] == 'qq':
+                        try:
+                            # 尝试构造引用回复消息
+                            dictTValue['tLogName'] = log_name
+                            tmp_reply_str_2 = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuote'], dictTValue)
+                            reply_with_quote = f'[CQ:reply,id={last_message_id}]{tmp_reply_str_2}'
+                            replyMsg(plugin_event, reply_with_quote)
+                        except:
+                            # 如果引用回复失败，抛出异常回复
+                            dictTValue['tLogName'] = log_name
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogQuoteError'], 
+                                dictTValue
+                            )
+                            replyMsg(plugin_event, tmp_reply_str)
+                    else:
+                        # 其他平台不支持引用回复
                         dictTValue['tLogName'] = log_name
-                        tmp_reply_str_2 = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogQuote'], dictTValue)
-                        reply_with_quote = f'[CQ:reply,id={last_message_id}]{tmp_reply_str_2}'
-                        replyMsg(plugin_event, reply_with_quote)
-                    except:
-                        # 如果引用回复失败，回退到正常回复
-                        pass
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogQuoteError'], 
+                            dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
                 # 正常回复
                 replyMsg(plugin_event, tmp_reply_str)
                 return
@@ -1422,11 +1436,11 @@ def unity_reply(plugin_event, Proc):
                             replyMsg(plugin_event, reply_with_quote)
                             return
                         except:
-                            # 如果引用回复失败，回退到正常回复
+                            # 如果引用回复失败，则抛出引用失败回复
                             pass
 
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogQuote'], 
+                        dictStrCustom['strLoggerLogQuoteError'], 
                         dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
@@ -1435,37 +1449,10 @@ def unity_reply(plugin_event, Proc):
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
                 # 获取指定的日志名称，如果没有指定则使用当前活跃日志
                 log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
-                if log_name is None:
-                    log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform'],
-                        userConfigKey = 'logActiveName',
-                        botHash = plugin_event.bot_info.hash
-                    )
-                    if not log_name:
-                        return OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogStatusNoLog'], 
-                            dictTValue
-                        )
                 tmp_reply_str = get_log_status(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name)
                 replyMsg(plugin_event, tmp_reply_str)
             else:
                 log_name = tmp_reast_str.strip() if tmp_reast_str.strip() else None
-                # 获取当前活跃日志
-                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform'],
-                    userConfigKey = 'logActiveName',
-                    botHash = plugin_event.bot_info.hash
-                )
-                # 这里判断是如果是单 log 指令的情况下没有活跃日志，那么返回 NoLog 自定义条目
-                if not active_log_name:
-                    return OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogStatusNoLog'], 
-                        dictTValue
-                    )
                 # 如果是通过.log查看日志状态，没有名称的话，就返回helper
                 if log_name:
                     replyMsgLazyHelpByEvent(plugin_event, 'log')

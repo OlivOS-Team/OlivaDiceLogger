@@ -51,6 +51,7 @@ dictStrCustom = {
     'strLoggerLogStatus': '[{tLogName}] 日志状态:\nUUID: {tLogUUID}\n当前状态: {tLogStatus}\n日志行数: {tLogLines}\n日志总时长: {tLogTime}',
     'strLoggerLogStatusNoLog': '当前没有活跃日志',
     'strLoggerLogQuote': '此处为 [{tLogName}] 日志结束消息',
+    'strLoggerLogQuoteError': '[{tLogName}] 日志引用失败，可能原因是平台不为QQ或者Bot未记录上次结束日志的消息',
     'strLoggerLogQuoteOn' : "本群已开启自动引用上次结束日志功能",
     'strLoggerLogQuoteAlreadyOn' : "本群自动引用上次结束日志功能已处于开启状态",
     'strLoggerLogQuoteOff' : "本群已关闭自动引用上次结束日志功能",
