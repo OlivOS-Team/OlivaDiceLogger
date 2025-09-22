@@ -52,10 +52,13 @@ def unity_reply(plugin_event, Proc):
     msgIsCommand = OlivaDiceCore.msgReply.msgIsCommand
 
     tmp_at_str = OlivOS.messageAPI.PARA.at(plugin_event.base_info['self_id']).CQ()
+    tmp_id_str = str(plugin_event.base_info['self_id'])
     tmp_at_str_sub = None
+    tmp_id_str_sub = None
     if 'sub_self_id' in plugin_event.data.extend:
         if plugin_event.data.extend['sub_self_id'] != None:
             tmp_at_str_sub = OlivOS.messageAPI.PARA.at(plugin_event.data.extend['sub_self_id']).CQ()
+            tmp_id_str_sub = str(plugin_event.data.extend['sub_self_id'])
     tmp_command_str_1 = '.'
     tmp_command_str_2 = '。'
     tmp_command_str_3 = '/'
@@ -65,24 +68,41 @@ def unity_reply(plugin_event, Proc):
     flag_is_from_host = False
     flag_is_from_group = False
     flag_is_from_group_admin = False
+    flag_is_from_group_sub_admin = False
     flag_is_from_group_have_admin = False
     flag_is_from_master = False
     if isMatchWordStart(tmp_reast_str, '[CQ:reply,id='):
         tmp_reast_str = skipToRight(tmp_reast_str, ']')
         tmp_reast_str = tmp_reast_str[1:]
-        if isMatchWordStart(tmp_reast_str, tmp_at_str):
-            tmp_reast_str = getMatchWordStartRight(tmp_reast_str, tmp_at_str)
-            tmp_reast_str = skipSpaceStart(tmp_reast_str)
+    if flag_force_reply is False:
+        tmp_reast_str_old = tmp_reast_str
+        tmp_reast_obj = OlivOS.messageAPI.Message_templet(
+            'old_string',
+            tmp_reast_str
+        )
+        tmp_at_list = []
+        for tmp_reast_obj_this in tmp_reast_obj.data:
+            tmp_para_str_this = tmp_reast_obj_this.CQ()
+            if type(tmp_reast_obj_this) is OlivOS.messageAPI.PARA.at:
+                tmp_at_list.append(str(tmp_reast_obj_this.data['id']))
+                tmp_reast_str = tmp_reast_str.lstrip(tmp_para_str_this)
+            elif type(tmp_reast_obj_this) is OlivOS.messageAPI.PARA.text:
+                if tmp_para_str_this.strip(' ') == '':
+                    tmp_reast_str = tmp_reast_str.lstrip(tmp_para_str_this)
+                else:
+                    break
+            else:
+                break
+        if tmp_id_str in tmp_at_list:
             flag_force_reply = True
-    if isMatchWordStart(tmp_reast_str, tmp_at_str):
-        tmp_reast_str = getMatchWordStartRight(tmp_reast_str, tmp_at_str)
-        tmp_reast_str = skipSpaceStart(tmp_reast_str)
-        flag_force_reply = True
-    if tmp_at_str_sub != None:
-        if isMatchWordStart(tmp_reast_str, tmp_at_str_sub):
-            tmp_reast_str = getMatchWordStartRight(tmp_reast_str, tmp_at_str_sub)
-            tmp_reast_str = skipSpaceStart(tmp_reast_str)
+        if tmp_id_str_sub in tmp_at_list:
             flag_force_reply = True
+        if 'all' in tmp_at_list:
+            flag_force_reply = True
+        if flag_force_reply is True:
+            tmp_reast_str = skipSpaceStart(tmp_reast_str)
+        else:
+            tmp_reast_str = tmp_reast_str_old
     [tmp_reast_str, flag_is_command] = msgIsCommand(
         tmp_reast_str,
         OlivaDiceCore.crossHook.dictHookList['prefix']
