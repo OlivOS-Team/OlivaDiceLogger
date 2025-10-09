@@ -1305,31 +1305,75 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey = 'logNameList',
                     botHash = plugin_event.bot_info.hash
                 ) or []
-                
-                if log_name not in log_name_list:
+                # 首先尝试直接切换（精确匹配）
+                if log_name in log_name_list:
+                    # 设置活跃日志
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logActiveName',
+                        userConfigValue = log_name,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                    )
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogNotFound'], 
+                        dictStrCustom['strLoggerLogActiveSwitch'], 
                         dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
-                    return
-                    
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logActiveName',
-                    userConfigValue = log_name,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
-                
-                dictTValue['tLogName'] = log_name
-                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                    dictStrCustom['strLoggerLogActiveSwitch'], 
-                    dictTValue
-                )
-                replyMsg(plugin_event, tmp_reply_str)
+                else:
+                    # 如果直接切换失败，尝试模糊搜索
+                    if len(log_name_list) > 0:
+                        dictTValue['tLogName'] = log_name
+                        selected_log_name = OlivaDiceCore.helpDoc.fuzzySearchAndSelect(
+                            key_str = log_name,
+                            item_list = log_name_list,
+                            bot_hash = plugin_event.bot_info.hash,
+                            plugin_event = plugin_event,
+                            strRecommendKey = 'strLoggerLogSetRecommend',
+                            strErrorKey = 'strLoggerLogNotFound',
+                            dictStrCustom = dictStrCustom,
+                            dictTValue = dictTValue
+                        )
+                        # 如果用户选择了某个日志，切换到该日志
+                        if selected_log_name is not None:
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logActiveName',
+                                userConfigValue = selected_log_name,
+                                botHash = plugin_event.bot_info.hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform']
+                            )
+                            OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                                userHash = OlivaDiceCore.userConfig.getUserHash(
+                                    userId = tmp_hagID,
+                                    userType = 'group',
+                                    platform = plugin_event.platform['platform']
+                                )
+                            )
+                            dictTValue['tLogName'] = selected_log_name
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogActiveSwitch'], 
+                                dictTValue
+                            )
+                            replyMsg(plugin_event, tmp_reply_str)
+                    else:
+                        # 如果没有任何日志，显示错误
+                        dictTValue['tLogName'] = log_name
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogNotFound'], 
+                            dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
                 return
             elif isMatchWordStart(tmp_reast_str, ['quote','reply']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['quote','reply'])
