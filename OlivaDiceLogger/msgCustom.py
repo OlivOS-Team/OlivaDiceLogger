@@ -56,6 +56,7 @@ dictStrCustom = {
     'strLoggerLogQuoteAlreadyOn' : "本群自动引用上次结束日志功能已处于开启状态",
     'strLoggerLogQuoteOff' : "本群已关闭自动引用上次结束日志功能",
     'strLoggerLogQuoteAlreadyOff' : "本群自动引用上次结束日志功能已处于关闭状态",
+    'strLoggerLogSetRecommend': '未找到日志[{tLogSelection}]，你是想找以下日志吗？:\n{tSearchResult}\n请输入序号以选择对应日志',
 }
 
 dictStrConst = {
@@ -93,8 +94,7 @@ dictHelpDocTemp = {
     指定UUID的日志必须为已经end/stop的日志
 .log quote (名字) 引用当前活跃日志/指定日志功能
     若平台不为QQ或者Bot未记录上次结束日志的消息，则无法引用
-.log quote on 开启自动引用上次日志功能
-.log quote off 关闭自动引用上次日志功能
+.log quote on/off 开启/关闭自动引用上次日志功能
 
 输入 .log 不带参数为查看当前日志状态
 日志的默认名称为 default
