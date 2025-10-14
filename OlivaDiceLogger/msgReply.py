@@ -1323,6 +1323,7 @@ def unity_reply(plugin_event, Proc):
                             platform = plugin_event.platform['platform']
                         )
                     )
+                    dictTValue['tLogSelection'] = log_name
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                         dictStrCustom['strLoggerLogActiveSwitch'], 
@@ -1333,6 +1334,7 @@ def unity_reply(plugin_event, Proc):
                     # 如果直接切换失败，尝试模糊搜索
                     if len(log_name_list) > 0:
                         dictTValue['tLogName'] = log_name
+                        dictTValue['tLogSelection'] = log_name
                         selected_log_name = OlivaDiceCore.helpDoc.fuzzySearchAndSelect(
                             key_str = log_name,
                             item_list = log_name_list,

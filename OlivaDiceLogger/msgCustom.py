@@ -72,6 +72,7 @@ dictTValue = {
     'tLogLines': 'N/A',
     'tLogUrl': 'N/A',
     'tLogStatus': 'N/A',
+    'tLogSelection': 'N/A',
     'tLogTime': '0s'
 }
 
