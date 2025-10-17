@@ -183,6 +183,24 @@ def unity_reply(plugin_event, Proc):
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
 
+            # 检查是否有日志正在进行end操作(锁定状态)
+            log_ending_lock = OlivaDiceCore.userConfig.getUserConfigByKey(
+                userId = tmp_hagID,
+                userType = 'group',
+                platform = plugin_event.platform['platform'],
+                userConfigKey = 'logEndingLock',
+                botHash = plugin_event.bot_info.hash
+            )
+            
+            if log_ending_lock:
+                # 如果正在进行end操作，阻止所有其他log命令
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogEndingInProgress'], 
+                    dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+
             if isMatchWordStart(tmp_reast_str, ['on','new']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['on','new'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
@@ -476,6 +494,24 @@ def unity_reply(plugin_event, Proc):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'end')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
 
+                # 在第一次回复时立即设置锁定状态，防止多次触发
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey = 'logEndingLock',
+                    userConfigValue = True,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
+                )
+                
+                OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                    userHash = OlivaDiceCore.userConfig.getUserHash(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                )
+
                 log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId = tmp_hagID,
                     userType = 'group',
@@ -488,6 +524,22 @@ def unity_reply(plugin_event, Proc):
                     log_name = tmp_reast_str.strip()
 
                 if log_name is None:
+                    # 解除锁定
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logEndingLock',
+                        userConfigValue = False,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                    )
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyEnd'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     return
@@ -501,6 +553,22 @@ def unity_reply(plugin_event, Proc):
                 ) or []
 
                 if log_name not in log_name_list:
+                    # 解除锁定
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logEndingLock',
+                        userConfigValue = False,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                    )
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogNotFound'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
@@ -570,120 +638,136 @@ def unity_reply(plugin_event, Proc):
                 tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogEnd'], dictTValue)
                 replyMsg(plugin_event, tmp_reply_str)
 
-                if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration):
-                    dictTValue['tLogName'] = log_name
-                    dictTValue['tLogUUID'] = tmp_log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
-                    replyMsg(plugin_event, tmp_reply_str)
-                    OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
-                    encoded_logName = urllib.parse.quote(tmp_logName)
-                    dictTValue['tLogUrl'] = '%s%s' % (
-                        OlivaDiceLogger.data.dataLogPainterUrl,
-                        encoded_logName
-                    )
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
-                    replyMsg(plugin_event, tmp_reply_str)
-
-                    if log_name in log_name_list:
-                        log_name_list.remove(log_name)
-                        OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logNameList',
-                            userConfigValue = log_name_list,
-                            botHash = plugin_event.bot_info.hash,
-                            userId = tmp_hagID,
-                            userType = 'group',
-                            platform = plugin_event.platform['platform']
+                upload_success = False
+                try:
+                    if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration):
+                        dictTValue['tLogName'] = log_name
+                        dictTValue['tLogUUID'] = tmp_log_uuid
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogSave'], dictTValue)
+                        replyMsg(plugin_event, tmp_reply_str)
+                        OlivaDiceLogger.logger.uploadLogFile(tmp_logName)
+                        encoded_logName = urllib.parse.quote(tmp_logName)
+                        dictTValue['tLogUrl'] = '%s%s' % (
+                            OlivaDiceLogger.data.dataLogPainterUrl,
+                            encoded_logName
                         )
-                        
-                        if log_name in log_name_dict:
-                            del log_name_dict[log_name]
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUrl'], dictTValue)
+                        replyMsg(plugin_event, tmp_reply_str)
+                        upload_success = True
+
+                        if log_name in log_name_list:
+                            log_name_list.remove(log_name)
                             OlivaDiceCore.userConfig.setUserConfigByKey(
-                                userConfigKey = 'logNameDict',
-                                userConfigValue = log_name_dict,
+                                userConfigKey = 'logNameList',
+                                userConfigValue = log_name_list,
                                 botHash = plugin_event.bot_info.hash,
                                 userId = tmp_hagID,
                                 userType = 'group',
                                 platform = plugin_event.platform['platform']
                             )
                             
-                        if log_name in log_name_time_dict:
-                            del log_name_time_dict[log_name]
-                            OlivaDiceCore.userConfig.setUserConfigByKey(
-                                userConfigKey = 'logNameTimeDict',
-                                userConfigValue = log_name_time_dict,
-                                botHash = plugin_event.bot_info.hash,
-                                userId = tmp_hagID,
-                                userType = 'group',
-                                platform = plugin_event.platform['platform']
-                            )
-
-                    try:
-                        if plugin_event.platform['platform'] == 'kaiheila'\
-                        and plugin_event.indeAPI.hasAPI('create_message'):
-                            plugin_event.indeAPI.create_message(
-                                chat_type = 'group',
-                                chat_id = plugin_event.data.group_id,
-                                content_type = 10,
-                                content = json.dumps(
-                                    [
-                                        {
-                                            "type": "card",
-                                            "theme": "primary",
-                                            "color": "#009FE9",
-                                            "size": "lg",
-                                            "modules": [
-                                                {
-                                                    "type": "header",
-                                                    "text": {
-                                                        "type": "plain-text",
-                                                        "content": "您的日志将在如下时间后过期，请尽快点击按钮提取"
-                                                    }
-                                                },
-                                                {
-                                                    "type": "countdown",
-                                                    "mode": "day",
-                                                    "endTime": int((int(datetime.now(timezone.utc).timestamp()) + 7 * 24 * 60 * 60) * 1000)
-                                                },
-                                                {
-                                                    "type": "action-group",
-                                                    "elements": [
-                                                        {
-                                                            "type": "button",
-                                                            "theme": "info",
-                                                            "value": str(dictTValue['tLogUrl']),
-                                                            "click": "link",
-                                                            "text": {
-                                                                "type": "plain-text",
-                                                                "content": "点我提取日志"
-                                                            }
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    "type": "context",
-                                                    "elements": [
-                                                        {
-                                                          "type": "plain-text",
-                                                          "content": "OlivaDice - 青果核心掷骰机器人"
-                                                        }
-                                                    ]
-                                                }
-                                            ]
-                                        }
-                                    ],
-                                    ensure_ascii=False
+                            if log_name in log_name_dict:
+                                del log_name_dict[log_name]
+                                OlivaDiceCore.userConfig.setUserConfigByKey(
+                                    userConfigKey = 'logNameDict',
+                                    userConfigValue = log_name_dict,
+                                    botHash = plugin_event.bot_info.hash,
+                                    userId = tmp_hagID,
+                                    userType = 'group',
+                                    platform = plugin_event.platform['platform']
                                 )
-                            )
-                    except Exception as e:
-                        traceback.print_exc()
+                                
+                            if log_name in log_name_time_dict:
+                                del log_name_time_dict[log_name]
+                                OlivaDiceCore.userConfig.setUserConfigByKey(
+                                    userConfigKey = 'logNameTimeDict',
+                                    userConfigValue = log_name_time_dict,
+                                    botHash = plugin_event.bot_info.hash,
+                                    userId = tmp_hagID,
+                                    userType = 'group',
+                                    platform = plugin_event.platform['platform']
+                                )
 
-                OlivaDiceCore.userConfig.writeUserConfigByUserHash(
-                    userHash = OlivaDiceCore.userConfig.getUserHash(
+                        try:
+                            if plugin_event.platform['platform'] == 'kaiheila'\
+                            and plugin_event.indeAPI.hasAPI('create_message'):
+                                plugin_event.indeAPI.create_message(
+                                    chat_type = 'group',
+                                    chat_id = plugin_event.data.group_id,
+                                    content_type = 10,
+                                    content = json.dumps(
+                                        [
+                                            {
+                                                "type": "card",
+                                                "theme": "primary",
+                                                "color": "#009FE9",
+                                                "size": "lg",
+                                                "modules": [
+                                                    {
+                                                        "type": "header",
+                                                        "text": {
+                                                            "type": "plain-text",
+                                                            "content": "您的日志将在如下时间后过期，请尽快点击按钮提取"
+                                                        }
+                                                    },
+                                                    {
+                                                        "type": "countdown",
+                                                        "mode": "day",
+                                                        "endTime": int((int(datetime.now(timezone.utc).timestamp()) + 7 * 24 * 60 * 60) * 1000)
+                                                    },
+                                                    {
+                                                        "type": "action-group",
+                                                        "elements": [
+                                                            {
+                                                                "type": "button",
+                                                                "theme": "info",
+                                                                "value": str(dictTValue['tLogUrl']),
+                                                                "click": "link",
+                                                                "text": {
+                                                                    "type": "plain-text",
+                                                                    "content": "点我提取日志"
+                                                                }
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "context",
+                                                        "elements": [
+                                                            {
+                                                              "type": "plain-text",
+                                                              "content": "OlivaDice - 青果核心掷骰机器人"
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        ],
+                                        ensure_ascii=False
+                                    )
+                                )
+                        except Exception as e:
+                            traceback.print_exc()
+                except Exception as e:
+                    # 上传失败也要解除锁定
+                    traceback.print_exc()
+                finally:
+                    # 无论成功失败，都解除锁定
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logEndingLock',
+                        userConfigValue = False,
+                        botHash = plugin_event.bot_info.hash,
                         userId = tmp_hagID,
                         userType = 'group',
                         platform = plugin_event.platform['platform']
                     )
-                )
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                    )
+
                 return
 
             elif isMatchWordStart(tmp_reast_str, 'list'):

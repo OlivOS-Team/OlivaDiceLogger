@@ -29,6 +29,7 @@ dictStrCustom = {
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
     'strLoggerLogEnd': '结束记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
+    'strLoggerLogEndingInProgress': '正在处理日志结束操作，请稍候...',
     'strLoggerLogSave': '日志 [{tLogName}] (UUID: {tLogUUID}) 已保存',
     'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogList': '本群有以下日志:\n{tLogList}',
