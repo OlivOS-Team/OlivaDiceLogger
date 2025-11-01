@@ -25,7 +25,8 @@ dictUserConfigNoteDefault = {
     'logQuote' : False,
     'logNameList' : [],
     'logNameDict' : {},
-    'logNameTimeDict' : {}
+    'logNameTimeDict' : {},
+    'logStatus' : {}
 }
 
 def initUserConfigNoteDefault(bot_info_dict):
