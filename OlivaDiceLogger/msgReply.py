@@ -291,6 +291,13 @@ def unity_reply(plugin_event, Proc):
                     # 初始化日志状态数据
                     tmp_log_uuid = log_name_dict[log_name]
                     OlivaDiceLogger.logger.init_log_status(tmp_log_uuid, plugin_event, tmp_hagID)
+                    # 创建空的status文件
+                    dataPath = OlivaDiceLogger.data.dataPath
+                    dataLogPath = OlivaDiceLogger.data.dataLogPath
+                    status_file = f'{dataPath}{dataLogPath}/status_{tmp_log_uuid}.json'
+                    if not os.path.exists(status_file):
+                        with open(status_file, 'w', encoding='utf-8') as f:
+                            json.dump({}, f, ensure_ascii=False, indent=2)
                     dictTValue['tLogName'] = log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
                 else:
