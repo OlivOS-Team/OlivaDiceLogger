@@ -477,3 +477,205 @@ def get_last_message_id(log_file_path):
         except:
             pass
     return last_message_id
+
+def write_status_to_file(log_uuid, status_data):
+    """将统计数据写入status_uuid.json文件"""
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    status_file = f'{dataPath}{dataLogPath}/status_{log_uuid}.json'
+    try:
+        with open(status_file, 'w', encoding='utf-8') as f:
+            json.dump(status_data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        traceback.print_exc()
+        return False
+
+def read_status_from_file(log_uuid):
+    """从status_uuid.json文件读取统计数据"""
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    status_file = f'{dataPath}{dataLogPath}/status_{log_uuid}.json'
+    try:
+        if os.path.exists(status_file):
+            with open(status_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return None
+    except Exception as e:
+        traceback.print_exc()
+        return None
+
+def init_log_status(log_uuid, plugin_event, tmp_hagID):
+    """初始化日志状态数据"""
+    # 获取当前群组配置中的logStatus
+    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId=tmp_hagID,
+        userType='group',
+        platform=plugin_event.platform['platform'],
+        userConfigKey='logStatus',
+        botHash=plugin_event.bot_info.hash
+    )
+    if log_status is None:
+        log_status = {}
+    
+    # 如果该UUID不存在，则创建
+    if log_uuid not in log_status:
+        log_status[log_uuid] = {}
+        OlivaDiceCore.userConfig.setUserConfigByKey(
+            userId=tmp_hagID,
+            userType='group',
+            platform=plugin_event.platform['platform'],
+            userConfigKey='logStatus',
+            userConfigValue=log_status,
+            botHash=plugin_event.bot_info.hash
+        )
+
+def persist_log_status(log_uuid, plugin_event, tmp_hagID):
+    """持久化日志状态数据到status_uuid.json"""
+    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId=tmp_hagID,
+        userType='group',
+        platform=plugin_event.platform['platform'],
+        userConfigKey='logStatus',
+        botHash=plugin_event.bot_info.hash
+    )
+    if log_status and log_uuid in log_status:
+        write_status_to_file(log_uuid, log_status[log_uuid])
+
+def clear_log_status(log_uuid, plugin_event, tmp_hagID):
+    """清除内存中的日志状态数据"""
+    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId=tmp_hagID,
+        userType='group',
+        platform=plugin_event.platform['platform'],
+        userConfigKey='logStatus',
+        botHash=plugin_event.bot_info.hash
+    )
+    if log_status and log_uuid in log_status:
+        del log_status[log_uuid]
+        OlivaDiceCore.userConfig.setUserConfigByKey(
+            userId=tmp_hagID,
+            userType='group',
+            platform=plugin_event.platform['platform'],
+            userConfigKey='logStatus',
+            userConfigValue=log_status,
+            botHash=plugin_event.bot_info.hash
+        )
+
+def get_log_status(log_uuid, plugin_event, tmp_hagID):
+    """获取日志状态数据"""
+    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+        userId=tmp_hagID,
+        userType='group',
+        platform=plugin_event.platform['platform'],
+        userConfigKey='logStatus',
+        botHash=plugin_event.bot_info.hash
+    )
+    if log_status and log_uuid in log_status:
+        return log_status[log_uuid]
+    
+    # 从文件中读取
+    return read_status_from_file(log_uuid)
+
+def format_user_stat_data(user_data, bot_hash, dictStrCustom):
+    """格式化单个用户的统计数据"""
+    if not user_data or '人物卡' not in user_data:
+        return None, 0, 0, []
+    
+    success_format = dictStrCustom['strLoggerStatSuccessFormat']
+    fail_format = dictStrCustom['strLoggerStatFailFormat']
+    pc_card_format = dictStrCustom['strLoggerStatPcCardFormat']
+    success_label = dictStrCustom['strLoggerStatSuccessLabel']
+    fail_label = dictStrCustom['strLoggerStatFailLabel']
+    pc_card_separator = dictStrCustom['strLoggerStatPcCardSeparator']
+    
+    pc_cards_data = []
+    total_success = 0
+    total_fail = 0
+    
+    for pc_name, pc_data in user_data['人物卡'].items():
+        pc_success = sum(pc_data.get('成功', {}).values())
+        pc_fail = sum(pc_data.get('失败', {}).values())
+        total_success += pc_success
+        total_fail += pc_fail
+        
+        # 格式化成功列表
+        success_str = ''
+        success_list = []
+        # 不论是否有成功数据，都获取成功列表
+        if pc_data.get('成功'):
+            for skill, count in pc_data['成功'].items():
+                formatted = success_format.replace('{tSkillName}', skill).replace('{tCount}', str(count))
+                success_list.append(formatted)
+        # 使用分号分隔，最后一个换行
+        if len(success_list) > 1:
+            success_items = '; '.join(success_list)
+        else:
+            success_items = success_list[0] if success_list else '无'
+        success_str = success_label.replace('{tSuccessItems}', success_items)
+        
+        # 格式化失败列表
+        fail_str = ''
+        fail_list = []
+        # 不论是否有失败数据，都获取失败列表
+        if pc_data.get('失败'):
+            for skill, count in pc_data['失败'].items():
+                formatted = fail_format.replace('{tSkillName}', skill).replace('{tCount}', str(count))
+                fail_list.append(formatted)
+        # 使用分号分隔，最后一个换行
+        if len(fail_list) > 1:
+            fail_items = '; '.join(fail_list)
+        else:
+            fail_items = fail_list[0] if fail_list else '无'
+        fail_str = fail_label.replace('{tFailItems}', fail_items)
+        
+        # 存储人物卡数据
+        pc_card_text = pc_card_format.replace('{tPcName}', pc_name).replace('{tSuccessList}', success_str).replace('{tFailList}', fail_str)
+        pc_cards_data.append({
+            'name': pc_name,
+            'success_count': pc_success,
+            'fail_count': pc_fail,
+            'success_text': success_str,
+            'fail_text': fail_str,
+            'card_text': pc_card_text
+        })
+    
+    # 生成默认的格式化文本（向后兼容）
+    lines = [card['card_text'] for card in pc_cards_data]
+    return pc_card_separator.join(lines), total_success, total_fail, pc_cards_data
+
+def format_all_stat_data(plugin_event, status_data, dictStrCustom):
+    """格式化所有用户的统计数据"""
+    if not status_data:
+        return None, 0, 0, []
+    
+    # 获取自定义格式
+    user_format = dictStrCustom['strLoggerStatUserFormat']
+    user_separator = dictStrCustom['strLoggerStatUserSeparator']
+    
+    users_data = []
+    total_success = 0
+    total_fail = 0
+    
+    for user_hash, user_data in status_data.items():
+        user_id = user_data['id']
+        user_name = OlivaDiceCore.msgReplyModel.get_user_name(plugin_event, user_id)
+        user_stat, user_success, user_fail, pc_cards_data = format_user_stat_data(user_data, plugin_event.bot_info.hash, dictStrCustom)
+        
+        if user_stat:
+            user_text = user_format.replace('{tUserName}', user_name).replace('{tUserStatData}', user_stat)
+            users_data.append({
+                'name': user_name,
+                'user_id': user_id,
+                'success_count': user_success,
+                'fail_count': user_fail,
+                'stat_text': user_stat,
+                'user_text': user_text,
+                'pc_cards_data': pc_cards_data
+            })
+            total_success += user_success
+            total_fail += user_fail
+    
+    # 生成默认的格式化文本
+    lines = [user['user_text'] for user in users_data]
+    return user_separator.join(lines), total_success, total_fail, users_data
