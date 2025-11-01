@@ -601,31 +601,33 @@ def format_user_stat_data(user_data, bot_hash, dictStrCustom):
         
         # 格式化成功列表
         success_str = ''
+        success_list = []
+        # 不论是否有成功数据，都获取成功列表
         if pc_data.get('成功'):
-            success_list = []
             for skill, count in pc_data['成功'].items():
                 formatted = success_format.replace('{tSkillName}', skill).replace('{tCount}', str(count))
                 success_list.append(formatted)
-            # 使用分号分隔，最后一个换行
-            if len(success_list) > 1:
-                success_items = '; '.join(success_list)
-            else:
-                success_items = success_list[0] if success_list else ''
-            success_str = success_label.replace('{tSuccessItems}', success_items)
+        # 使用分号分隔，最后一个换行
+        if len(success_list) > 1:
+            success_items = '; '.join(success_list)
+        else:
+            success_items = success_list[0] if success_list else '无'
+        success_str = success_label.replace('{tSuccessItems}', success_items)
         
         # 格式化失败列表
         fail_str = ''
+        fail_list = []
+        # 不论是否有失败数据，都获取失败列表
         if pc_data.get('失败'):
-            fail_list = []
             for skill, count in pc_data['失败'].items():
                 formatted = fail_format.replace('{tSkillName}', skill).replace('{tCount}', str(count))
                 fail_list.append(formatted)
-            # 使用分号分隔，最后一个换行
-            if len(fail_list) > 1:
-                fail_items = '; '.join(fail_list)
-            else:
-                fail_items = fail_list[0] if fail_list else ''
-            fail_str = fail_label.replace('{tFailItems}', fail_items)
+        # 使用分号分隔，最后一个换行
+        if len(fail_list) > 1:
+            fail_items = '; '.join(fail_list)
+        else:
+            fail_items = fail_list[0] if fail_list else '无'
+        fail_str = fail_label.replace('{tFailItems}', fail_items)
         
         # 存储人物卡数据
         pc_card_text = pc_card_format.replace('{tPcName}', pc_name).replace('{tSuccessList}', success_str).replace('{tFailList}', fail_str)

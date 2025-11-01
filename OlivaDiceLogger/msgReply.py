@@ -25,6 +25,7 @@ import os
 from datetime import datetime, timezone, timedelta
 import uuid
 import json
+import glob
 import traceback
 
 def unity_init(plugin_event, Proc):
@@ -1482,19 +1483,24 @@ def unity_reply(plugin_event, Proc):
                 target_uuid = None
                 target_user_id = None
                 show_all = False
-                # 解析消息中的@用户
-                tmp_reast_str_para = OlivOS.messageAPI.Message_templet('old_string', tmp_reast_str)
-                for item in tmp_reast_str_para.data:
+                tmp_msg = OlivOS.messageAPI.Message_templet('old_string', tmp_reast_str)
+                text_parts = []
+                for item in tmp_msg.data:
                     if type(item) == OlivOS.messageAPI.PARA.at:
                         target_user_id = item.data['id']
-                        break
-                # 检查是否是 all 或 UUID
-                if not target_user_id:
-                    param = tmp_reast_str.strip().lower()
-                    if param == 'all':
+                    elif type(item) == OlivOS.messageAPI.PARA.text:
+                        text = item.data['text'].strip()
+                        if text:
+                            text_parts.extend(text.split())
+                if text_parts:
+                    # 从后往前贪婪匹配检查是否有all
+                    if text_parts[-1].lower() == 'all':
                         show_all = True
-                    elif param:
-                        target_uuid = param
+                        text_parts.pop()
+                    # 将剩余文本作为UUID
+                    if text_parts:
+                        target_uuid = text_parts[0]
+                        target_uuid = target_uuid.strip()
                 # 获取日志 UUID
                 log_uuid = None
                 log_name = None
@@ -1502,10 +1508,8 @@ def unity_reply(plugin_event, Proc):
                 if target_uuid:
                     # 使用指定的 UUID
                     log_uuid = target_uuid
-                    # 尝试从文件名获取 log_name
                     dataPath = OlivaDiceLogger.data.dataPath
                     dataLogPath = OlivaDiceLogger.data.dataLogPath
-                    import glob
                     log_files = glob.glob(f'{dataPath}{dataLogPath}/log_{log_uuid}_*.olivadicelog')
                     if log_files:
                         filename = os.path.basename(log_files[0])

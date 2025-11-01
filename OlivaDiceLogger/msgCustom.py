@@ -59,12 +59,12 @@ dictStrCustom = {
     'strLoggerLogQuoteOff' : "本群已关闭自动引用上次结束日志功能",
     'strLoggerLogQuoteAlreadyOff' : "本群自动引用上次结束日志功能已处于关闭状态",
     'strLoggerLogStatNotFound': '未找到活跃日志',
-    'strLoggerLogStatUUIDNotFound': '未找到UUID为[{tLogUUID}]的日志数据',
+    'strLoggerLogStatUUIDNotFound': '未找到UUID为[{tLogUUID}]的日志数据，或日志中没有任何统计数据',
     'strLoggerLogStatSelf': '日志 [{tLogName}] (UUID: {tLogUUID}) 的统计数据:\n\n[{tUserName}]的数据:\n{tStatData}\n\n总成功次数: {tTotalSuccess}\n总失败次数: {tTotalFail}\n成功率: {tSuccessRate}%',
     'strLoggerLogStatSelfEmpty': '日志 [{tLogName}] (UUID: {tLogUUID}) 中没有[{tUserName}]的数据',
     'strLoggerLogStatUser': '日志 [{tLogName}] (UUID: {tLogUUID}) 的统计数据:\n\n[{tUserName01}]的数据:\n{tStatData}\n\n总成功次数: {tTotalSuccess}\n总失败次数: {tTotalFail}\n成功率: {tSuccessRate}%',
     'strLoggerLogStatUserEmpty': '日志 [{tLogName}] (UUID: {tLogUUID}) 中没有[{tUserName01}]的数据',
-    'strLoggerLogStatAll': '日志 [{tLogName}] (UUID: {tLogUUID}) 的统计数据:\n\n{tStatData}\n全体总成功次数: {tTotalSuccess}\n\n全体总失败次数: {tTotalFail}\n全体成功率: {tSuccessRate}%',
+    'strLoggerLogStatAll': '日志 [{tLogName}] (UUID: {tLogUUID}) 的统计数据:\n\n{tStatData}\n\n全体总成功次数: {tTotalSuccess}\n全体总失败次数: {tTotalFail}\n全体成功率: {tSuccessRate}%',
     'strLoggerLogStatEmpty': '日志 [{tLogName}] (UUID: {tLogUUID}) 中没有任何统计数据',
     'strLoggerStatPcCardFormat': '人物卡 [{tPcName}]:\n{tSuccessList}\n{tFailList}',
     'strLoggerStatSuccessLabel': '- 成功:\n{tSuccessItems}',
@@ -117,11 +117,8 @@ dictHelpDocTemp = {
 .log quote (名字) 引用当前活跃日志/指定日志功能
     若平台不为QQ或者Bot未记录上次结束日志的消息，则无法引用
 .log quote on/off 开启/关闭自动引用上次日志功能
-.log stat (UUID/all/@用户) 查看日志统计数据
-    不带参数查看自己的数据
-    all 查看所有人的数据
-    @用户 查看指定用户的数据
-    UUID 查看指定UUID日志的数据（不接受日志名）
+.log stat (UUID) (all/@用户) 查看日志统计数据
+    不带参数查看当前活跃日志中自己的数据
 
 输入 .log 不带参数为查看当前日志状态
 日志的默认名称为 default
