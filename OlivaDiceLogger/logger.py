@@ -611,7 +611,7 @@ def format_user_stat_data(user_data, bot_hash, dictStrCustom):
         if len(success_list) > 1:
             success_items = '; '.join(success_list)
         else:
-            success_items = success_list[0] if success_list else '无'
+            success_items = success_list[0] if success_list else dictStrCustom['strLoggerStatEmptyText']
         success_str = success_label.replace('{tSuccessItems}', success_items)
         
         # 格式化失败列表
@@ -626,7 +626,7 @@ def format_user_stat_data(user_data, bot_hash, dictStrCustom):
         if len(fail_list) > 1:
             fail_items = '; '.join(fail_list)
         else:
-            fail_items = fail_list[0] if fail_list else '无'
+            fail_items = fail_list[0] if fail_list else dictStrCustom['strLoggerStatEmptyText']
         fail_str = fail_label.replace('{tFailItems}', fail_items)
         
         # 存储人物卡数据
