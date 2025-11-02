@@ -71,6 +71,7 @@ dictStrCustom = {
     'strLoggerStatFailLabel': '- 失败:\n{tFailItems}',
     'strLoggerStatSuccessFormat': '{tSkillName}: {tCount}次',
     'strLoggerStatFailFormat': '{tSkillName}: {tCount}次',
+    'strLoggerStatEmptyText': '无',
     'strLoggerStatPcCardSeparator': '\n\n',
     'strLoggerStatUserFormat': '[{tUserName}]的数据:\n{tUserStatData}',
     'strLoggerStatUserSeparator': '\n\n',
