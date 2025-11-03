@@ -491,6 +491,7 @@ def unity_reply(plugin_event, Proc):
 
                 dictTValue['tLogLines'] = str(log_lines)
                 dictTValue['tLogName'] = log_name
+                dictTValue['tLogUUID'] = tmp_log_uuid
                 tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                     dictStrCustom['strLoggerLogOff'], 
                     dictTValue
