@@ -292,6 +292,7 @@ def unity_reply(plugin_event, Proc):
                     tmp_log_uuid = log_name_dict[log_name]
                     OlivaDiceLogger.logger.init_log_status(tmp_log_uuid, plugin_event, tmp_hagID)
                     dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = tmp_log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogOn'], dictTValue)
                 else:
                     # 继续记录，更新开始时间
@@ -305,6 +306,7 @@ def unity_reply(plugin_event, Proc):
                     formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
                     dictTValue['tLogLines'] = str(log_lines)
                     dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = tmp_log_uuid
                     dictTValue['tLogTime'] = formatted_duration
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogContinue'], dictTValue)
 
@@ -1117,6 +1119,72 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUploadFailed'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    traceback.print_exc()
+                return
+            elif isMatchWordStart(tmp_reast_str, ['build', 'gene']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['build', 'gene'])
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+
+                if not tmp_reast_str.strip():
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogGenerateNoUUID'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_uuid = tmp_reast_str.strip()
+                log_name = None
+                
+                # 在日志文件夹中搜索包含该 UUID 的 .olivadicelog 文件
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                log_files = glob.glob(f'{dataPath}{dataLogPath}/log_{log_uuid}_*.olivadicelog')
+                
+                if log_files:
+                    # 从文件名中提取log_name
+                    filename = os.path.basename(log_files[0])
+                    log_name = filename.replace(f'log_{log_uuid}_', '').replace('.olivadicelog', '')
+                
+                if not log_name:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogGenerateNotFound'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                tmp_logName = f'log_{log_uuid}_{log_name}'
+                
+                # 尝试从olivadicelog文件中读取时长
+                total_duration = 0
+                olivadicelog_file = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                if os.path.exists(olivadicelog_file):
+                    try:
+                        with open(olivadicelog_file, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                try:
+                                    record = json.loads(line.strip())
+                                    if record.get('type') == 'log_total_duration':
+                                        total_duration = record.get('total_time', 0)
+                                        break
+                                except:
+                                    continue
+                    except:
+                        pass
+
+                # 强制生成trpglog文件
+                try:
+                    success = OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration)
+                    if success:
+                        dictTValue['tLogName'] = log_name
+                        dictTValue['tLogUUID'] = log_uuid
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogGenerateSuccess'], dictTValue)
+                    else:
+                        dictTValue['tLogUUID'] = log_uuid
+                        dictTValue['tLogName'] = log_name if log_name else 'N/A'
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogGenerateFailed'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                except Exception as e:
+                    dictTValue['tLogUUID'] = log_uuid
+                    dictTValue['tLogName'] = log_name if log_name else 'N/A'
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogGenerateFailed'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
                     traceback.print_exc()
                 return

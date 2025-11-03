@@ -21,9 +21,9 @@ import OlivaDiceLogger
 dictStrCustomDict = {}
 
 dictStrCustom = {
-    'strLoggerLogOn': '开始记录日志 [{tLogName}]',
+    'strLoggerLogOn': '开始记录日志 [{tLogName}] (UUID: {tLogUUID})',
     'strLoggerLogAlreadyOn': '已经正在记录日志 [{tLogName}]',
-    'strLoggerLogContinue': '继续记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
+    'strLoggerLogContinue': '继续记录日志 [{tLogName}] (UUID: {tLogUUID})\n当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogInvalidName': '日志名称 [{tLogName}] 不合法',
     'strLoggerLogOff': '暂停记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogAlreadyOff': '没有正在进行的日志',
@@ -42,6 +42,10 @@ dictStrCustom = {
     'strLoggerLogFileNotFound': '未找到[{tLogUUID}]对应的日志文件',
     'strLoggerLogUploadSuccess': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传成功，日志总时长: {tLogTime}，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogUploadFailed': '日志 [{tLogName}](UUID: {tLogUUID}) 重新上传失败，请稍后再试',
+    'strLoggerLogGenerateNoUUID': '请指定要生成日志的UUID',
+    'strLoggerLogGenerateNotFound': '未找到UUID为[{tLogUUID}]的日志文件',
+    'strLoggerLogGenerateSuccess': '已成功为UUID [{tLogUUID}] (日志名称: {tLogName}) 生成trpglog文件',
+    'strLoggerLogGenerateFailed': '为UUID [{tLogUUID}] 生成trpglog文件失败',
     'strLoggerLogNameNotFound': '本群日志列表中未找到名称为[{tLogName}]的日志',
     'strLoggerLogTempSuccess': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传成功，日志总时长: {tLogTime}，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogTempFailed': '临时日志 [{tLogName}] (UUID: {tLogUUID}) 上传失败，请稍后再试',
@@ -101,22 +105,21 @@ dictTValue = {
 dictHelpDocTemp = {
     'log': '''跑团日志记录
 .log on (名字) 开始记录日志
-    记录的日志名可以是默认名称或指定名称
 .log off (名字) 暂停记录指定日志或当前日志
 .log end (名字) 完成记录并发送日志文件
 .log info (名字) 查看指定日志或当前日志的状态
 .log temp (名字) 临时上传指定的日志
-    临时上传日志不影响记录，若不指定名字则默认为活跃日志
+    临时上传日志不影响记录
 .log stop (名字) 强制停止日志不上传
-    若不指定名字则默认为活跃日志
 .log set [名字] 切换活跃日志
 .log rename [新名字](/旧名字) 重命名活跃日志或指定日志
     若重命名指定日志，新旧名字用 '/' 分隔
 .log list 查看本群日志列表
 .log upload [UUID] 手动上传指定UUID的日志
     指定UUID的日志必须为已经end/stop的日志
+.log build [UUID] 强制为指定UUID的日志生成trpglog文件
 .log quote (名字) 引用当前活跃日志/指定日志功能
-    若平台不为QQ或者Bot未记录上次结束日志的消息，则无法引用
+    若平台不为QQ则无法引用
 .log quote on/off 开启/关闭自动引用上次日志功能
 .log stat (UUID) (all/@用户) 查看日志统计数据
     不带参数查看当前活跃日志中自己的数据
