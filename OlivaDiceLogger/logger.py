@@ -343,6 +343,9 @@ def loggerEntry(event, funcType, sender, dectData, message):
             userConfigKey = 'logEnable',
             botHash = event.bot_info.hash
         ):
+            # 检查事件是否有 message_id，如果没有则跳过
+            if not hasattr(event, 'data') or not hasattr(event.data, 'message_id'):
+                return
             message_id = event.data.message_id
                 
             log_dict = {
