@@ -328,14 +328,61 @@ def unity_reply(plugin_event, Proc):
                     platform = plugin_event.platform['platform']
                 )
 
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logEnable',
-                    userConfigValue = True,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
+                # 判断账号类型并处理日志启用
+                master_hash = getMasterBotHash(plugin_event.bot_info.hash)
+                
+                if master_hash is not None:
+                    # 当前是从账号，启用主账号的日志，禁用所有从账号
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logEnable',
+                        userConfigValue = True,
+                        botHash = master_hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
+                    slave_hashes = getSlaveBotHashes(master_hash)
+                    for slave_hash in slave_hashes:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logEnable',
+                            userConfigValue = False,
+                            botHash = slave_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                else:
+                    # 当前是主账号或独立账号
+                    slave_hashes = getSlaveBotHashes(plugin_event.bot_info.hash)
+                    if slave_hashes:
+                        # 是主账号，启用主账号，禁用所有从账号
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logEnable',
+                            userConfigValue = True,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                        for slave_hash in slave_hashes:
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logEnable',
+                                userConfigValue = False,
+                                botHash = slave_hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform']
+                            )
+                    else:
+                        # 是独立账号，只启用当前账号
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logEnable',
+                            userConfigValue = True,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userConfigKey = 'logNameList',
@@ -480,14 +527,17 @@ def unity_reply(plugin_event, Proc):
                     platform = plugin_event.platform['platform']
                 )
 
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logEnable',
-                    userConfigValue=False,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
+                # 为所有链接的bot禁用日志
+                linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
+                for bot_hash in linked_bot_hashes:
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logEnable',
+                        userConfigValue = False,
+                        botHash = bot_hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform']
+                    )
 
                 dictTValue['tLogLines'] = str(log_lines)
                 dictTValue['tLogName'] = log_name
@@ -623,23 +673,26 @@ def unity_reply(plugin_event, Proc):
                     botHash = plugin_event.bot_info.hash
                 )
 
+                # 为所有链接的bot禁用日志和清除活动日志名
                 if active_log_name == log_name:
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logEnable',
-                        userConfigValue = False,
-                        botHash = plugin_event.bot_info.hash,
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logActiveName',
-                        userConfigValue = None,
-                        botHash = plugin_event.bot_info.hash,
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
+                    linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
+                    for bot_hash in linked_bot_hashes:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logEnable',
+                            userConfigValue = False,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logActiveName',
+                            userConfigValue = None,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
 
                 # 显示时间
                 total_duration = 0
@@ -967,23 +1020,26 @@ def unity_reply(plugin_event, Proc):
                     botHash = plugin_event.bot_info.hash
                 )
             
+                # 为所有链接的bot禁用日志和清除活动日志名
                 if active_log_name == log_name:
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logEnable',
-                        userConfigValue = False,
-                        botHash = plugin_event.bot_info.hash,
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logActiveName',
-                        userConfigValue = None,
-                        botHash = plugin_event.bot_info.hash,
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
+                    linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
+                    for bot_hash in linked_bot_hashes:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logEnable',
+                            userConfigValue = False,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logActiveName',
+                            userConfigValue = None,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
 
                 # 显示时间
                 total_duration = 0
@@ -1375,15 +1431,18 @@ def unity_reply(plugin_event, Proc):
                     botHash = plugin_event.bot_info.hash
                 )
 
+                # 为所有链接的bot更新活动日志名
                 if active_log_name == old_name:
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logActiveName',
-                        userConfigValue = new_name,
-                        botHash = plugin_event.bot_info.hash,
-                        userId = tmp_hagID,
-                        userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
+                    linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
+                    for bot_hash in linked_bot_hashes:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logActiveName',
+                            userConfigValue = new_name,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform']
+                        )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userConfigKey = 'logNameList',
@@ -1965,3 +2024,44 @@ def get_log_info(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name = 
         dictStrCustom['strLoggerLogInfo'], 
         dictTValue
     )
+
+def getLinkedBotHashes(botHash):
+    """
+    获取与指定 bot 相关的所有 bot hash 列表
+    包括：
+    - 如果是主账号，返回 [master] + [all_slaves]
+    - 如果是从账号，返回 [master] + [all_slaves_of_master]
+    - 如果是独立账号，返回 [botHash]
+    """
+    relations = OlivaDiceCore.console.getAllAccountRelations()
+    # 检查是否是主账号
+    if botHash in relations:
+        slaves = relations[botHash]
+        return [botHash] + slaves
+    # 检查是否是从账号
+    for master, slaves in relations.items():
+        if botHash in slaves:
+            return [master] + slaves
+    
+    # 独立账号
+    return [botHash]
+
+def getMasterBotHash(botHash):
+    """
+    获取指定 bot 的主账号 hash
+    如果是从账号，返回主账号 hash
+    如果是主账号或独立账号，返回 None
+    """
+    relations = OlivaDiceCore.console.getAllAccountRelations()
+    for master, slaves in relations.items():
+        if botHash in slaves:
+            return master
+    return None
+
+def getSlaveBotHashes(botHash):
+    """
+    获取指定主账号的所有从账号 hash 列表
+    如果不是主账号，返回 []
+    """
+    relations = OlivaDiceCore.console.getAllAccountRelations()
+    return relations.get(botHash, [])
