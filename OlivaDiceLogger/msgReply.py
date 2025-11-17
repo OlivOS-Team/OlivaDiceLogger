@@ -223,6 +223,23 @@ def unity_reply(plugin_event, Proc):
                         userConfigKey = 'logActiveName',
                         botHash = plugin_event.bot_info.hash
                     )
+                    
+                    # 即使已经在记录日志，也要确保从账号被禁用
+                    account_type, all_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                    if account_type != 'independent':
+                        # 是主账号或从账号，禁用所有从账号
+                        for master_hash, slave_hashes in relations_dict.items():
+                            for slave_hash in slave_hashes:
+                                OlivaDiceCore.userConfig.setUserConfigByKey(
+                                    userConfigKey = 'logEnable',
+                                    userConfigValue = False,
+                                    botHash = slave_hash,
+                                    userId = tmp_hagID,
+                                    userType = 'group',
+                                    platform = plugin_event.platform['platform'],
+                                    forceNoRedirect = True
+                                )
+                    
                     dictTValue['tLogName'] = active_log_name
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogAlreadyOn'], dictTValue)
                     replyMsg(plugin_event, tmp_reply_str)
@@ -312,13 +329,16 @@ def unity_reply(plugin_event, Proc):
 
                 # 不管是否为继续日志，都检查并创建status文件
                 tmp_log_uuid = log_name_dict[log_name]
+                tmp_logName = f'log_{tmp_log_uuid}_{log_name}'
                 dataPath = OlivaDiceLogger.data.dataPath
                 dataLogPath = OlivaDiceLogger.data.dataLogPath
                 status_file = f'{dataPath}{dataLogPath}/status_{tmp_log_uuid}.json'
                 if not os.path.exists(status_file):
                     with open(status_file, 'w', encoding='utf-8') as f:
                         json.dump({}, f, ensure_ascii=False, indent=2)
-
+                
+                # 初始化或检查日志文件的log_total_duration条目
+                OlivaDiceLogger.logger.init_log_file(tmp_logName)
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userConfigKey = 'logActiveName',
                     userConfigValue = log_name,
@@ -329,40 +349,30 @@ def unity_reply(plugin_event, Proc):
                 )
 
                 # 判断账号类型并处理日志启用
-                master_hash = getMasterBotHash(plugin_event.bot_info.hash)
+                account_type, all_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
                 
-                if master_hash is not None:
-                    # 当前是从账号，启用主账号的日志，禁用所有从账号
+                if account_type == 'independent':
+                    # 是独立账号，只启用当前账号
                     OlivaDiceCore.userConfig.setUserConfigByKey(
                         userConfigKey = 'logEnable',
                         userConfigValue = True,
-                        botHash = master_hash,
+                        botHash = plugin_event.bot_info.hash,
                         userId = tmp_hagID,
                         userType = 'group',
-                        platform = plugin_event.platform['platform']
+                        platform = plugin_event.platform['platform'],
+                        forceNoRedirect = True
                     )
-                    slave_hashes = getSlaveBotHashes(master_hash)
-                    for slave_hash in slave_hashes:
-                        OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logEnable',
-                            userConfigValue = False,
-                            botHash = slave_hash,
-                            userId = tmp_hagID,
-                            userType = 'group',
-                            platform = plugin_event.platform['platform']
-                        )
                 else:
-                    # 当前是主账号或独立账号
-                    slave_hashes = getSlaveBotHashes(plugin_event.bot_info.hash)
-                    if slave_hashes:
-                        # 是主账号，启用主账号，禁用所有从账号
+                    # 是主账号或从账号，启用主账号，禁用所有从账号
+                    for master_hash, slave_hashes in relations_dict.items():
                         OlivaDiceCore.userConfig.setUserConfigByKey(
                             userConfigKey = 'logEnable',
                             userConfigValue = True,
-                            botHash = plugin_event.bot_info.hash,
+                            botHash = master_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
                         for slave_hash in slave_hashes:
                             OlivaDiceCore.userConfig.setUserConfigByKey(
@@ -371,45 +381,121 @@ def unity_reply(plugin_event, Proc):
                                 botHash = slave_hash,
                                 userId = tmp_hagID,
                                 userType = 'group',
-                                platform = plugin_event.platform['platform']
+                                platform = plugin_event.platform['platform'],
+                                forceNoRedirect = True
                             )
-                    else:
-                        # 是独立账号，只启用当前账号
+
+                # 为所有链接的bot同步时间记录和统一名称（只同步已有相同UUID日志的bot）
+                account_type_sync, linked_bot_hashes_sync, relations_dict_sync = getLinkedBotHashes(plugin_event.bot_info.hash)
+                current_uuid = log_name_dict[log_name]
+                
+                for bot_hash in linked_bot_hashes_sync:
+                    # 获取该bot的日志配置
+                    bot_log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameList',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or []
+                    
+                    bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    bot_log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameTimeDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    # 查找该bot是否有相同UUID的日志
+                    bot_log_name_for_uuid = None
+                    for name, uid in bot_log_name_dict.items():
+                        if uid == current_uuid:
+                            bot_log_name_for_uuid = name
+                            break
+                    
+                    # 只有该bot已有相同UUID的日志时，才进行同步
+                    if bot_log_name_for_uuid:
+                        # 如果名称不同，统一为主账号的名称
+                        if bot_log_name_for_uuid != log_name:
+                            # 更新logNameList
+                            if bot_log_name_for_uuid in bot_log_name_list:
+                                bot_log_name_list[bot_log_name_list.index(bot_log_name_for_uuid)] = log_name
+                            
+                            # 更新logNameDict
+                            del bot_log_name_dict[bot_log_name_for_uuid]
+                            bot_log_name_dict[log_name] = current_uuid
+                            
+                            # 更新logNameTimeDict
+                            if bot_log_name_for_uuid in bot_log_name_time_dict:
+                                bot_log_name_time_dict[log_name] = bot_log_name_time_dict[bot_log_name_for_uuid]
+                                del bot_log_name_time_dict[bot_log_name_for_uuid]
+                            
+                            # 更新activelogname（如果是旧名称）
+                            bot_active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                userConfigKey = 'logActiveName',
+                                botHash = bot_hash,
+                                forceNoRedirect = True
+                            )
+                            if bot_active_log_name == bot_log_name_for_uuid:
+                                OlivaDiceCore.userConfig.setUserConfigByKey(
+                                    userConfigKey = 'logActiveName',
+                                    userConfigValue = log_name,
+                                    botHash = bot_hash,
+                                    userId = tmp_hagID,
+                                    userType = 'group',
+                                    platform = plugin_event.platform['platform'],
+                                    forceNoRedirect = True
+                                )
+                        
+                        # 同步时间记录
+                        if log_name in log_name_time_dict:
+                            bot_log_name_time_dict[log_name] = log_name_time_dict[log_name]
+                        
+                        # 保存更新后的配置
                         OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logEnable',
-                            userConfigValue = True,
-                            botHash = plugin_event.bot_info.hash,
+                            userConfigKey = 'logNameList',
+                            userConfigValue = bot_log_name_list,
+                            botHash = bot_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
-
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logNameList',
-                    userConfigValue = log_name_list,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
-
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logNameDict',
-                    userConfigValue = log_name_dict,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
-
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logNameTimeDict',
-                    userConfigValue = log_name_time_dict,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
+                        
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logNameDict',
+                            userConfigValue = bot_log_name_dict,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
+                        )
+                        
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logNameTimeDict',
+                            userConfigValue = bot_log_name_time_dict,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
+                        )
 
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
@@ -518,17 +604,51 @@ def unity_reply(plugin_event, Proc):
                     formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
                     dictTValue['tLogTime'] = formatted_duration
                 
-                OlivaDiceCore.userConfig.setUserConfigByKey(
-                    userConfigKey = 'logNameTimeDict',
-                    userConfigValue = log_name_time_dict,
-                    botHash = plugin_event.bot_info.hash,
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform']
-                )
+                # 为所有链接的bot同步更新时间记录（基于UUID）
+                current_uuid = log_name_dict.get(log_name)
+                if current_uuid:
+                    account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                    for bot_hash in linked_bot_hashes:
+                        bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            userConfigKey = 'logNameDict',
+                            botHash = bot_hash,
+                            forceNoRedirect = True
+                        ) or {}
+                        
+                        bot_log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            userConfigKey = 'logNameTimeDict',
+                            botHash = bot_hash,
+                            forceNoRedirect = True
+                        ) or {}
+                        
+                        # 查找该bot中相同UUID的日志名称
+                        bot_log_name_for_uuid = None
+                        for name, uid in bot_log_name_dict.items():
+                            if uid == current_uuid:
+                                bot_log_name_for_uuid = name
+                                break
+                        
+                        # 如果找到相同UUID的日志，同步时间记录
+                        if bot_log_name_for_uuid and log_name in log_name_time_dict:
+                            bot_log_name_time_dict[bot_log_name_for_uuid] = log_name_time_dict[log_name]
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logNameTimeDict',
+                                userConfigValue = bot_log_name_time_dict,
+                                botHash = bot_hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                forceNoRedirect = True
+                            )
 
                 # 为所有链接的bot禁用日志
-                linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
+                account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
                 for bot_hash in linked_bot_hashes:
                     OlivaDiceCore.userConfig.setUserConfigByKey(
                         userConfigKey = 'logEnable',
@@ -536,7 +656,8 @@ def unity_reply(plugin_event, Proc):
                         botHash = bot_hash,
                         userId = tmp_hagID,
                         userType = 'group',
-                        platform = plugin_event.platform['platform']
+                        platform = plugin_event.platform['platform'],
+                        forceNoRedirect = True
                     )
 
                 dictTValue['tLogLines'] = str(log_lines)
@@ -546,10 +667,15 @@ def unity_reply(plugin_event, Proc):
                     dictStrCustom['strLoggerLogOff'], 
                     dictTValue
                 )
-
+                # 更新olivadicelog文件中的log_total_duration
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                if log_name in log_name_time_dict:
+                    total_duration = log_name_time_dict[log_name]['total_time']
+                    OlivaDiceLogger.logger.update_log_total_duration(dataLogFile, total_duration)
                 # 持久化日志状态数据到文件
                 OlivaDiceLogger.logger.persist_log_status(tmp_log_uuid, plugin_event, tmp_hagID)
-                
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash=OlivaDiceCore.userConfig.getUserHash(
                         userId = tmp_hagID,
@@ -673,17 +799,41 @@ def unity_reply(plugin_event, Proc):
                     botHash = plugin_event.bot_info.hash
                 )
 
-                # 为所有链接的bot禁用日志和清除活动日志名
-                if active_log_name == log_name:
-                    linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
-                    for bot_hash in linked_bot_hashes:
+                # 为所有链接的bot禁用日志和清除活动日志名（基于UUID）
+                current_uuid = log_name_dict.get(log_name)
+                account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                for bot_hash in linked_bot_hashes:
+                    # 获取该bot的日志字典
+                    bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    # 检查该bot的activelogname是否为要结束的日志（通过UUID匹配）
+                    bot_active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    )
+                    
+                    # 检查UUID是否匹配
+                    bot_active_uuid = bot_log_name_dict.get(bot_active_log_name) if bot_active_log_name else None
+                    if bot_active_uuid == current_uuid and current_uuid is not None:
                         OlivaDiceCore.userConfig.setUserConfigByKey(
                             userConfigKey = 'logEnable',
                             userConfigValue = False,
                             botHash = bot_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
                         OlivaDiceCore.userConfig.setUserConfigByKey(
                             userConfigKey = 'logActiveName',
@@ -691,7 +841,8 @@ def unity_reply(plugin_event, Proc):
                             botHash = bot_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
 
                 # 显示时间
@@ -728,38 +879,82 @@ def unity_reply(plugin_event, Proc):
                         replyMsg(plugin_event, tmp_reply_str)
                         upload_success = True
 
-                        if log_name in log_name_list:
-                            log_name_list.remove(log_name)
-                            OlivaDiceCore.userConfig.setUserConfigByKey(
-                                userConfigKey = 'logNameList',
-                                userConfigValue = log_name_list,
-                                botHash = plugin_event.bot_info.hash,
+                        # 为所有链接的bot删除日志名称相关配置（基于UUID）
+                        current_uuid = log_name_dict.get(log_name)
+                        account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                        for bot_hash in linked_bot_hashes:
+                            # 获取每个bot的配置
+                            bot_log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
                                 userId = tmp_hagID,
                                 userType = 'group',
-                                platform = plugin_event.platform['platform']
-                            )
+                                platform = plugin_event.platform['platform'],
+                                userConfigKey = 'logNameList',
+                                botHash = bot_hash,
+                                forceNoRedirect = True
+                            ) or []
                             
-                            if log_name in log_name_dict:
-                                del log_name_dict[log_name]
-                                OlivaDiceCore.userConfig.setUserConfigByKey(
-                                    userConfigKey = 'logNameDict',
-                                    userConfigValue = log_name_dict,
-                                    botHash = plugin_event.bot_info.hash,
-                                    userId = tmp_hagID,
-                                    userType = 'group',
-                                    platform = plugin_event.platform['platform']
-                                )
+                            bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                userConfigKey = 'logNameDict',
+                                botHash = bot_hash,
+                                forceNoRedirect = True
+                            ) or {}
+                            
+                            bot_log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                userConfigKey = 'logNameTimeDict',
+                                botHash = bot_hash,
+                                forceNoRedirect = True
+                            ) or {}
+                            
+                            # 查找该bot中相同UUID的日志名称
+                            bot_log_name_to_delete = None
+                            for name, uid in bot_log_name_dict.items():
+                                if uid == current_uuid:
+                                    bot_log_name_to_delete = name
+                                    break
+                            
+                            # 只删除相同UUID的日志
+                            if bot_log_name_to_delete:
+                                if bot_log_name_to_delete in bot_log_name_list:
+                                    bot_log_name_list.remove(bot_log_name_to_delete)
+                                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                                        userConfigKey = 'logNameList',
+                                        userConfigValue = bot_log_name_list,
+                                        botHash = bot_hash,
+                                        userId = tmp_hagID,
+                                        userType = 'group',
+                                        platform = plugin_event.platform['platform'],
+                                        forceNoRedirect = True
+                                    )
                                 
-                            if log_name in log_name_time_dict:
-                                del log_name_time_dict[log_name]
-                                OlivaDiceCore.userConfig.setUserConfigByKey(
-                                    userConfigKey = 'logNameTimeDict',
-                                    userConfigValue = log_name_time_dict,
-                                    botHash = plugin_event.bot_info.hash,
-                                    userId = tmp_hagID,
-                                    userType = 'group',
-                                    platform = plugin_event.platform['platform']
-                                )
+                                if bot_log_name_to_delete in bot_log_name_dict:
+                                    del bot_log_name_dict[bot_log_name_to_delete]
+                                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                                        userConfigKey = 'logNameDict',
+                                        userConfigValue = bot_log_name_dict,
+                                        botHash = bot_hash,
+                                        userId = tmp_hagID,
+                                        userType = 'group',
+                                        platform = plugin_event.platform['platform'],
+                                        forceNoRedirect = True
+                                    )
+                                
+                                if bot_log_name_to_delete in bot_log_name_time_dict:
+                                    del bot_log_name_time_dict[bot_log_name_to_delete]
+                                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                                        userConfigKey = 'logNameTimeDict',
+                                        userConfigValue = bot_log_name_time_dict,
+                                        botHash = bot_hash,
+                                        userId = tmp_hagID,
+                                        userType = 'group',
+                                        platform = plugin_event.platform['platform'],
+                                        forceNoRedirect = True
+                                    )
 
                         try:
                             if plugin_event.platform['platform'] == 'kaiheila'\
@@ -1020,17 +1215,41 @@ def unity_reply(plugin_event, Proc):
                     botHash = plugin_event.bot_info.hash
                 )
             
-                # 为所有链接的bot禁用日志和清除活动日志名
-                if active_log_name == log_name:
-                    linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
-                    for bot_hash in linked_bot_hashes:
+                # 为所有链接的bot禁用日志和清除活动日志名（基于UUID）
+                current_uuid = log_name_dict.get(log_name)
+                account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                for bot_hash in linked_bot_hashes:
+                    # 获取该bot的日志字典
+                    bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    # 检查该bot的activelogname是否为要停止的日志（通过UUID匹配）
+                    bot_active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logActiveName',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    )
+                    
+                    # 检查UUID是否匹配
+                    bot_active_uuid = bot_log_name_dict.get(bot_active_log_name) if bot_active_log_name else None
+                    if bot_active_uuid == current_uuid and current_uuid is not None:
                         OlivaDiceCore.userConfig.setUserConfigByKey(
                             userConfigKey = 'logEnable',
                             userConfigValue = False,
                             botHash = bot_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
                         OlivaDiceCore.userConfig.setUserConfigByKey(
                             userConfigKey = 'logActiveName',
@@ -1038,7 +1257,8 @@ def unity_reply(plugin_event, Proc):
                             botHash = bot_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
 
                 # 显示时间
@@ -1073,38 +1293,82 @@ def unity_reply(plugin_event, Proc):
                 OlivaDiceLogger.logger.persist_log_status(tmp_log_uuid, plugin_event, tmp_hagID)
                 OlivaDiceLogger.logger.clear_log_status(tmp_log_uuid, plugin_event, tmp_hagID)
                 
-                if log_name in log_name_list:
-                    log_name_list.remove(log_name)
-                    OlivaDiceCore.userConfig.setUserConfigByKey(
-                        userConfigKey = 'logNameList',
-                        userConfigValue = log_name_list,
-                        botHash = plugin_event.bot_info.hash,
+                # 为所有链接的bot删除日志名称相关配置（基于UUID）
+                current_uuid = log_name_dict.get(log_name)
+                account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                for bot_hash in linked_bot_hashes:
+                    # 获取每个bot的配置
+                    bot_log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
                         userId = tmp_hagID,
                         userType = 'group',
-                        platform = plugin_event.platform['platform']
-                    )
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameList',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or []
                     
-                    if log_name in log_name_dict:
-                        del log_name_dict[log_name]
-                        OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logNameDict',
-                            userConfigValue = log_name_dict,
-                            botHash = plugin_event.bot_info.hash,
-                            userId = tmp_hagID,
-                            userType = 'group',
-                            platform = plugin_event.platform['platform']
-                        )
-
-                    if log_name in log_name_time_dict:
-                        del log_name_time_dict[log_name]
-                        OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logNameTimeDict',
-                            userConfigValue = log_name_time_dict,
-                            botHash = plugin_event.bot_info.hash,
-                            userId = tmp_hagID,
-                            userType = 'group',
-                            platform = plugin_event.platform['platform']
-                        )
+                    bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    bot_log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameTimeDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    # 查找该bot中相同UUID的日志名称
+                    bot_log_name_to_delete = None
+                    for name, uid in bot_log_name_dict.items():
+                        if uid == current_uuid:
+                            bot_log_name_to_delete = name
+                            break
+                    
+                    # 只删除相同UUID的日志
+                    if bot_log_name_to_delete:
+                        if bot_log_name_to_delete in bot_log_name_list:
+                            bot_log_name_list.remove(bot_log_name_to_delete)
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logNameList',
+                                userConfigValue = bot_log_name_list,
+                                botHash = bot_hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                forceNoRedirect = True
+                            )
+                        
+                        if bot_log_name_to_delete in bot_log_name_dict:
+                            del bot_log_name_dict[bot_log_name_to_delete]
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logNameDict',
+                                userConfigValue = bot_log_name_dict,
+                                botHash = bot_hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                forceNoRedirect = True
+                            )
+                        
+                        if bot_log_name_to_delete in bot_log_name_time_dict:
+                            del bot_log_name_time_dict[bot_log_name_to_delete]
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                    userConfigKey = 'logNameTimeDict',
+                                    userConfigValue = bot_log_name_time_dict,
+                                    botHash = bot_hash,
+                                    userId = tmp_hagID,
+                                    userType = 'group',
+                                    platform = plugin_event.platform['platform'],
+                                    forceNoRedirect = True
+                                )
             
                 OlivaDiceCore.userConfig.writeUserConfigByUserHash(
                     userHash = OlivaDiceCore.userConfig.getUserHash(
@@ -1414,35 +1678,107 @@ def unity_reply(plugin_event, Proc):
 
                 log_uuid = log_name_dict.get(old_name, str(uuid.uuid4()))
 
-                log_name_list[log_name_list.index(old_name)] = new_name
-                log_name_dict[new_name] = log_uuid
-                del log_name_dict[old_name]
-
-                # 更新时间记录字典
-                if old_name in log_name_time_dict:
-                    log_name_time_dict[new_name] = log_name_time_dict[old_name]
-                    del log_name_time_dict[old_name]
-
-                active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId = tmp_hagID,
-                    userType = 'group',
-                    platform = plugin_event.platform['platform'],
-                    userConfigKey = 'logActiveName',
-                    botHash = plugin_event.bot_info.hash
-                )
-
-                # 为所有链接的bot更新活动日志名
-                if active_log_name == old_name:
-                    linked_bot_hashes = getLinkedBotHashes(plugin_event.bot_info.hash)
-                    for bot_hash in linked_bot_hashes:
+                # 为所有链接的bot更新日志名称相关配置（基于UUID）
+                account_type, linked_bot_hashes, relations_dict = getLinkedBotHashes(plugin_event.bot_info.hash)
+                for bot_hash in linked_bot_hashes:
+                    # 获取每个bot的配置
+                    bot_log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameList',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or []
+                    
+                    bot_log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    bot_log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = plugin_event.platform['platform'],
+                        userConfigKey = 'logNameTimeDict',
+                        botHash = bot_hash,
+                        forceNoRedirect = True
+                    ) or {}
+                    
+                    # 查找该bot中相同UUID的日志名称
+                    bot_old_name = None
+                    for name, uid in bot_log_name_dict.items():
+                        if uid == log_uuid:
+                            bot_old_name = name
+                            break
+                    
+                    # 只有找到相同UUID的日志才更新
+                    if bot_old_name:
+                        # 更新配置
+                        if bot_old_name in bot_log_name_list:
+                            bot_log_name_list[bot_log_name_list.index(bot_old_name)] = new_name
+                        
+                        if bot_old_name in bot_log_name_dict:
+                            bot_log_name_dict[new_name] = log_uuid
+                            del bot_log_name_dict[bot_old_name]
+                        
+                        if bot_old_name in bot_log_name_time_dict:
+                            bot_log_name_time_dict[new_name] = bot_log_name_time_dict[bot_old_name]
+                            del bot_log_name_time_dict[bot_old_name]
+                        
                         OlivaDiceCore.userConfig.setUserConfigByKey(
-                            userConfigKey = 'logActiveName',
-                            userConfigValue = new_name,
+                            userConfigKey = 'logNameList',
+                            userConfigValue = bot_log_name_list,
                             botHash = bot_hash,
                             userId = tmp_hagID,
                             userType = 'group',
-                            platform = plugin_event.platform['platform']
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
                         )
+                        
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logNameDict',
+                            userConfigValue = bot_log_name_dict,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
+                        )
+                        
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logNameTimeDict',
+                            userConfigValue = bot_log_name_time_dict,
+                            botHash = bot_hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            forceNoRedirect = True
+                        )
+                        
+                        # 如果重命名的是当前活动日志,更新活动日志名
+                        active_log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = plugin_event.platform['platform'],
+                            userConfigKey = 'logActiveName',
+                            botHash = bot_hash,
+                            forceNoRedirect = True
+                        )
+                        if active_log_name == bot_old_name:
+                            OlivaDiceCore.userConfig.setUserConfigByKey(
+                                userConfigKey = 'logActiveName',
+                                userConfigValue = new_name,
+                                botHash = bot_hash,
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = plugin_event.platform['platform'],
+                                forceNoRedirect = True
+                            )
 
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userConfigKey = 'logNameList',
@@ -2027,41 +2363,20 @@ def get_log_info(tmp_hagID, plugin_event, dictTValue, dictStrCustom, log_name = 
 
 def getLinkedBotHashes(botHash):
     """
-    获取与指定 bot 相关的所有 bot hash 列表
-    包括：
-    - 如果是主账号，返回 [master] + [all_slaves]
-    - 如果是从账号，返回 [master] + [all_slaves_of_master]
-    - 如果是独立账号，返回 [botHash]
+    获取 bot 的链接信息
     """
     relations = OlivaDiceCore.console.getAllAccountRelations()
     # 检查是否是主账号
     if botHash in relations:
         slaves = relations[botHash]
-        return [botHash] + slaves
+        all_hashes = [botHash]
+        all_hashes.extend(slaves)
+        return ('master', all_hashes, {botHash: slaves})
     # 检查是否是从账号
     for master, slaves in relations.items():
         if botHash in slaves:
-            return [master] + slaves
-    
+            all_hashes = [master]
+            all_hashes.extend(slaves)
+            return ('slave', all_hashes, {master: slaves})
     # 独立账号
-    return [botHash]
-
-def getMasterBotHash(botHash):
-    """
-    获取指定 bot 的主账号 hash
-    如果是从账号，返回主账号 hash
-    如果是主账号或独立账号，返回 None
-    """
-    relations = OlivaDiceCore.console.getAllAccountRelations()
-    for master, slaves in relations.items():
-        if botHash in slaves:
-            return master
-    return None
-
-def getSlaveBotHashes(botHash):
-    """
-    获取指定主账号的所有从账号 hash 列表
-    如果不是主账号，返回 []
-    """
-    relations = OlivaDiceCore.console.getAllAccountRelations()
-    return relations.get(botHash, [])
+    return ('independent', [botHash], {})

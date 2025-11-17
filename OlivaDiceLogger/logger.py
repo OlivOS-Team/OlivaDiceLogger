@@ -386,6 +386,84 @@ def loggerEntry(event, funcType, sender, dectData, message):
             loggerIOLock.release()
     pass
 
+def init_log_file(logName):
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)
+    try:
+        # 如果文件不存在,创建并添加初始的duration记录
+        if not os.path.exists(dataLogFile):
+            if dataLogFile not in gLoggerIOLockMap:
+                gLoggerIOLockMap[dataLogFile] = threading.Lock()
+            
+            with gLoggerIOLockMap[dataLogFile]:
+                total_record = {
+                    'type': 'log_total_duration',
+                    'total_time': 0
+                }
+                with open(dataLogFile, 'w', encoding='utf-8') as f:
+                    f.write(json.dumps(total_record, ensure_ascii=False) + '\n')
+        else:
+            # 文件已存在,检查是否有duration记录
+            has_duration = False
+            with open(dataLogFile, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        log_entry = json.loads(line.strip())
+                        if log_entry.get('type') == 'log_total_duration':
+                            has_duration = True
+                            break
+                    except:
+                        continue
+            # 如果没有duration记录,在开头添加
+            if not has_duration:
+                if dataLogFile not in gLoggerIOLockMap:
+                    gLoggerIOLockMap[dataLogFile] = threading.Lock()
+                with gLoggerIOLockMap[dataLogFile]:
+                    with open(dataLogFile, 'r', encoding='utf-8') as f:
+                        existing_content = f.read()
+                    total_record = {
+                        'type': 'log_total_duration',
+                        'total_time': 0
+                    }
+                    with open(dataLogFile, 'w', encoding='utf-8') as f:
+                        f.write(json.dumps(total_record, ensure_ascii=False) + '\n')
+                        f.write(existing_content)
+    except Exception as e:
+        traceback.print_exc()
+
+def update_log_total_duration(dataLogFile, total_duration):
+    """更新olivadicelog文件中的log_total_duration条目"""
+    try:
+        if dataLogFile not in gLoggerIOLockMap:
+            gLoggerIOLockMap[dataLogFile] = threading.Lock()
+        
+        with gLoggerIOLockMap[dataLogFile]:
+            updated_lines = []
+            duration_updated = False
+            
+            with open(dataLogFile, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        log_entry = json.loads(line.strip())
+                        if log_entry.get('type') == 'log_total_duration':
+                            log_entry['total_time'] = total_duration
+                            duration_updated = True
+                        updated_lines.append(json.dumps(log_entry, ensure_ascii=False) + '\n')
+                    except json.JSONDecodeError:
+                        updated_lines.append(line)
+            # 如果没有找到duration记录,添加一个(理论上不应该发生)
+            if not duration_updated:
+                total_record = {
+                    'type': 'log_total_duration',
+                    'total_time': total_duration
+                }
+                updated_lines.insert(0, json.dumps(total_record, ensure_ascii=False) + '\n')
+            with open(dataLogFile, 'w', encoding='utf-8') as f:
+                f.writelines(updated_lines)
+    except Exception as e:
+        traceback.print_exc()
+
 def releaseLogFile(logName, total_duration = 0, temp = False):
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
@@ -398,19 +476,8 @@ def releaseLogFile(logName, total_duration = 0, temp = False):
         return False
     tmp_dataLogFile = None
     try:
-        # 尝试从日志文件名解析日志名称和UUID
-        log_name_parts = logName.split('_')
-        if len(log_name_parts) >= 3:
-            log_uuid = log_name_parts[1]
-            log_name = "_".join(log_name_parts[2:])
-            # 如果不是临时日志，在olivadicelog末尾添加总时长记录
-            if not temp:
-                total_record = {
-                    'type': 'log_total_duration',
-                    'total_time': total_duration
-                }
-                with open(dataLogFile, 'a', encoding='utf-8') as f:
-                    f.write(json.dumps(total_record, ensure_ascii=False) + '\n')
+        # 更新olivadicelog中的总时长记录
+        update_log_total_duration(dataLogFile, total_duration)
         with open(dataLogFile, 'r+', encoding='utf-8', errors='ignore') as dataLogFile_f:
             tmp_dataLogFile = dataLogFile_f.read()
         if tmp_dataLogFile:
