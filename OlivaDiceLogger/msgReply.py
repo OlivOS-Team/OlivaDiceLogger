@@ -339,6 +339,35 @@ def unity_reply(plugin_event, Proc):
                 
                 # 初始化或检查日志文件的log_total_duration条目
                 OlivaDiceLogger.logger.init_log_file(tmp_logName)
+                
+                # 保存日志列表和字典配置
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey = 'logNameList',
+                    userConfigValue = log_name_list,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
+                )
+                
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey = 'logNameDict',
+                    userConfigValue = log_name_dict,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
+                )
+                
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userConfigKey = 'logNameTimeDict',
+                    userConfigValue = log_name_time_dict,
+                    botHash = plugin_event.bot_info.hash,
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = plugin_event.platform['platform']
+                )
+                
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userConfigKey = 'logActiveName',
                     userConfigValue = log_name,
