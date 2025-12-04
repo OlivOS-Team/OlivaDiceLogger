@@ -18,6 +18,16 @@ import OlivOS
 import OlivaDiceCore
 import OlivaDiceLogger
 
+dictConsoleSwitchTemplate = {
+    'default' : {
+        'defaultLogQuote' : 0
+    }
+}
+
+dictConfigKeyToConsoleSwitchMapping = {
+    'logQuote': 'defaultLogQuote'
+}
+
 dictStrCustomDict = {}
 
 dictStrCustom = {

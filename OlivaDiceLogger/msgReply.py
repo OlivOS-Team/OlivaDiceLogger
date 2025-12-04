@@ -539,8 +539,7 @@ def unity_reply(plugin_event, Proc):
                     userType = 'group',
                     platform = plugin_event.platform['platform'],
                     userConfigKey = 'logQuote',
-                    botHash = plugin_event.bot_info.hash,
-                    default = False
+                    botHash = plugin_event.bot_info.hash
                 )
                 # 如果是继续日志且有最后一个 message_id 并且开启了 log quote，尝试引用回复
                 if is_continue and last_message_id and log_quote:
