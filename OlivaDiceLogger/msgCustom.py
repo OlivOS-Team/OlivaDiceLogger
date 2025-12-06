@@ -20,12 +20,14 @@ import OlivaDiceLogger
 
 dictConsoleSwitchTemplate = {
     'default' : {
-        'defaultLogQuote' : 0
+        'defaultLogQuote' : 0,
+        'defaultLogUsePcName' : 0
     }
 }
 
 dictConfigKeyToConsoleSwitchMapping = {
-    'logQuote': 'defaultLogQuote'
+    'logQuote': 'defaultLogQuote',
+    'logUsePcName': 'defaultLogUsePcName'
 }
 
 dictStrCustomDict = {}
@@ -72,6 +74,10 @@ dictStrCustom = {
     'strLoggerLogQuoteAlreadyOn' : "本群自动引用上次结束日志功能已处于开启状态",
     'strLoggerLogQuoteOff' : "本群已关闭自动引用上次结束日志功能",
     'strLoggerLogQuoteAlreadyOff' : "本群自动引用上次结束日志功能已处于关闭状态",
+    'strLoggerLogUsePcNameOn' : "本群已开启日志使用角色卡名字功能",
+    'strLoggerLogUsePcNameAlreadyOn' : "本群日志使用角色卡名字功能已处于开启状态",
+    'strLoggerLogUsePcNameOff' : "本群已关闭日志使用角色卡名字功能",
+    'strLoggerLogUsePcNameAlreadyOff' : "本群日志使用角色卡名字功能已处于关闭状态",
     'strLoggerLogStatNotFound': '未找到活跃日志',
     'strLoggerLogStatUUIDNotFound': '未找到UUID为[{tLogUUID}]的日志数据，或日志中没有任何统计数据',
     'strLoggerLogStatSelf': '日志 [{tLogName}] (UUID: {tLogUUID}) 的统计数据:\n\n[{tUserName}]的数据:\n{tStatData}\n\n总成功次数: {tTotalSuccess}\n总失败次数: {tTotalFail}\n成功率: {tSuccessRate}%',
@@ -128,13 +134,14 @@ dictHelpDocTemp = {
 .log upload [UUID] 手动上传指定UUID的日志
     指定UUID的日志必须为已经end/stop的日志
 .log build [UUID] 强制为指定UUID的日志生成trpglog文件
-.log quote (名字) 引用当前活跃日志/指定日志功能
+.log quote (名字) 引用日志
     若平台不为QQ则无法引用
-.log quote on/off 开启/关闭自动引用上次日志功能
+.log quote on/off 开启/关闭自动引用上次日志
+.log pcname on/off 开启/关闭日志使用角色卡名字
+    开启后日志记录时将使用发送者的角色卡名字
 .log stat (UUID) (all/@用户) 查看日志统计数据
     不带参数查看当前活跃日志中自己的数据
 
-输入 .log 不带参数为查看当前日志状态
 日志的默认名称为 default
 日志上传存在失败可能，届时请联系后台管理索取''',
 

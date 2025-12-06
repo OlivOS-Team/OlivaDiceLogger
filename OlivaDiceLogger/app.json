@@ -4,8 +4,8 @@
     "namespace" : "OlivaDiceLogger",
     "message_mode" : "old_string",
     "info" : "本模块为OlivaDice的日志模块，提供了跑团日志记录器，它可以在跑团过程中对日志进行记录，并由结果生成跑团日志，与在线的跑团日志渲染器进行联动、或发送日志邮件。",
-    "version" : "3.0.24",
-    "svn" : 32,
+    "version" : "3.0.25",
+    "svn" : 33,
     "compatible_svn" : 190,
     "priority" : 20030,
     "support" : [
