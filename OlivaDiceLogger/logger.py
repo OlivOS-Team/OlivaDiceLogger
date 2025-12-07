@@ -347,6 +347,26 @@ def loggerEntry(event, funcType, sender, dectData, message):
             if not hasattr(event, 'data') or not hasattr(event.data, 'message_id'):
                 return
             message_id = event.data.message_id
+            
+            # 检查是否启用使用角色卡名字功能
+            log_use_pc_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                userId = tmp_hagID,
+                userType = 'group',
+                platform = event.platform['platform'],
+                userConfigKey = 'logUsePcName',
+                botHash = event.bot_info.hash
+            )
+            if log_use_pc_name and funcType == 'recv':
+                try:
+                    tmp_pcHash = OlivaDiceCore.pcCard.getPcHash(
+                        tmp_id,
+                        event.platform['platform']
+                    )
+                    tmp_pc_name = OlivaDiceCore.pcCard.pcCardDataGetSelectionKey(tmp_pcHash, hagId = tmp_hagID)
+                    if tmp_pc_name:
+                        tmp_name = tmp_pc_name
+                except Exception as e:
+                    pass
                 
             log_dict = {
                 'time': int(time.mktime(time.localtime())),

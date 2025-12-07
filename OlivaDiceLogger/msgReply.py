@@ -2286,6 +2286,89 @@ def unity_reply(plugin_event, Proc):
                         dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
+            elif isMatchWordStart(tmp_reast_str, ['pcname']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['pcname'])
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                tmp_pc_platform = plugin_event.platform['platform']
+                # 处理 log pcname on/off 命令
+                log_use_pc_name_enabled = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId = tmp_hagID,
+                    userType = 'group',
+                    platform = tmp_pc_platform,
+                    userConfigKey = 'logUsePcName',
+                    botHash = plugin_event.bot_info.hash,
+                    default = False
+                )
+                if isMatchWordStart(tmp_reast_str, 'on', fullMatch = True):
+                    # log pcname on 命令
+                    if log_use_pc_name_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUsePcNameAlreadyOn'], dictTValue)
+                    else:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logUsePcName',
+                            userConfigValue = True,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = tmp_pc_platform
+                        )
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash = OlivaDiceCore.userConfig.getUserHash(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = tmp_pc_platform
+                            )
+                        )
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUsePcNameOn'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                elif isMatchWordStart(tmp_reast_str, 'off', fullMatch = True):
+                    # log pcname off 命令
+                    if not log_use_pc_name_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUsePcNameAlreadyOff'], dictTValue)
+                    else:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey = 'logUsePcName',
+                            userConfigValue = False,
+                            botHash = plugin_event.bot_info.hash,
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = tmp_pc_platform
+                        )
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash = OlivaDiceCore.userConfig.getUserHash(
+                                userId = tmp_hagID,
+                                userType = 'group',
+                                platform = tmp_pc_platform
+                            )
+                        )
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUsePcNameOff'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                else:
+                    # 如果没有提供on/off参数，自动切换状态
+                    new_value = not log_use_pc_name_enabled
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userConfigKey = 'logUsePcName',
+                        userConfigValue = new_value,
+                        botHash = plugin_event.bot_info.hash,
+                        userId = tmp_hagID,
+                        userType = 'group',
+                        platform = tmp_pc_platform
+                    )
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash = OlivaDiceCore.userConfig.getUserHash(
+                            userId = tmp_hagID,
+                            userType = 'group',
+                            platform = tmp_pc_platform
+                        )
+                    )
+                    if new_value:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUsePcNameOn'], dictTValue)
+                    else:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogUsePcNameOff'], dictTValue)
+                    replyMsg(plugin_event, tmp_reply_str)
+                return
             elif isMatchWordStart(tmp_reast_str, 'info'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'info')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
