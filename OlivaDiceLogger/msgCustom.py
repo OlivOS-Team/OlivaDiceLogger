@@ -149,13 +149,7 @@ dictHelpDocTemp = {
 OlivaDice日志模块
 本模块为青果跑团掷骰机器人(OlivaDice)跑团日志模块，集成与跑团相关的跑团日志记录功能。
 核心开发者: lunzhiPenxil仑质
-[.help OlivaDiceLogger更新] 查看本模块更新日志
 注: 本模块为可选重要模块。''',
-
-    'OlivaDiceLogger更新': '''[OlivaDiceLogger]
-3.0.4: 支持新版OlivOS
-3.0.2: 用户记录优化
-3.0.0: 初始化项目''',
 
     '日志': '&log'
 }
