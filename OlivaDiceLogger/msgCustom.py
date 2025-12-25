@@ -21,13 +21,15 @@ import OlivaDiceLogger
 dictConsoleSwitchTemplate = {
     'default' : {
         'defaultLogQuote' : 0,
-        'defaultLogUsePcName' : 0
+        'defaultLogUsePcName' : 0,
+        'defaultLogUploadTimeout' : 60
     }
 }
 
 dictConfigKeyToConsoleSwitchMapping = {
     'logQuote': 'defaultLogQuote',
-    'logUsePcName': 'defaultLogUsePcName'
+    'logUsePcName': 'defaultLogUsePcName',
+    'logUploadTimeout': 'defaultLogUploadTimeout'
 }
 
 dictStrCustomDict = {}
@@ -42,11 +44,13 @@ dictStrCustom = {
     'strLoggerLogEnd': '结束记录日志 [{tLogName}] (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
     'strLoggerLogAlreadyEnd': '没有正在进行的日志',
     'strLoggerLogEndingInProgress': '正在处理日志结束操作，请稍候……',
+    'strLoggerLogUploadTimeout': '日志 [{tLogName}] (UUID: {tLogUUID}) 上传超时，已自动保存。可以稍后使用指令[.log upload {tLogUUID}]手动上传',
     'strLoggerLogSave': '日志 [{tLogName}] (UUID: {tLogUUID}) 已保存',
     'strLoggerLogUrl': '日志已上传，请在[ {tLogUrl} ]提取日志',
     'strLoggerLogList': '本群有以下日志:\n{tLogList}',
     'strLoggerLogListEmpty': '本群暂无日志',
     'strLoggerLogStop': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (当前已记录 {tLogLines} 行，日志总时长: {tLogTime})',
+    'strLoggerLogStopUnlock': '已解除日志结束锁定状态',
     'strLoggerLogStopError': '已强制停止日志 [{tLogName}] (UUID: {tLogUUID}) (日志已损坏)',
     'strLoggerLogActiveSwitch': '已切换活跃日志为 [{tLogName}]',
     'strLoggerLogSetRecommend': '未找到日志[{tLogSelection}]，你是想找以下日志吗？:\n{tSearchResult}\n请输入序号以选择对应日志',

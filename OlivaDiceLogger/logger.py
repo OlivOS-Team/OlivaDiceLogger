@@ -530,7 +530,7 @@ def releaseLogFile(logName, total_duration = 0, temp = False):
         return False
     return False
 
-def uploadLogFile(logName):
+def uploadLogFile(logName, timeout=60):
     dataPath = OlivaDiceLogger.data.dataPath
     dataLogPath = OlivaDiceLogger.data.dataLogPath
     dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)
@@ -545,7 +545,8 @@ def uploadLogFile(logName):
         data = {
             'name': logName
         }
-        response = req.request("POST", url, files = files, data = data, proxies = OlivaDiceCore.webTool.get_system_proxy())
+        response = req.request("POST", url, files = files, data = data, \
+            proxies = OlivaDiceCore.webTool.get_system_proxy(), timeout=timeout)
 
 def releaseDir(dir_path):
     if not os.path.exists(dir_path):
