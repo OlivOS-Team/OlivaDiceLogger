@@ -888,6 +888,7 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogTime'] = formatted_duration
                     
                 dictTValue['tLogName'] = log_name
+                dictTValue['tLogUUID'] = tmp_log_uuid
                 tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(dictStrCustom['strLoggerLogEnd'], dictTValue)
                 replyMsg(plugin_event, tmp_reply_str)
 
