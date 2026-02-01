@@ -596,18 +596,33 @@ def read_status_from_file(log_uuid):
         traceback.print_exc()
         return None
 
+def normalize_log_status_config(raw_value):
+    """将群组配置中的 logStatus 规范化为 dict。"""
+    if isinstance(raw_value, dict):
+        return raw_value
+    return {}
+
 def init_log_status(log_uuid, plugin_event, tmp_hagID):
     """初始化日志状态数据"""
     # 获取当前群组配置中的logStatus
-    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+    raw_log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
         userId=tmp_hagID,
         userType='group',
         platform=plugin_event.platform['platform'],
         userConfigKey='logStatus',
         botHash=plugin_event.bot_info.hash
     )
-    if log_status is None:
-        log_status = {}
+
+    log_status = normalize_log_status_config(raw_log_status)
+    if log_status != raw_log_status:
+        OlivaDiceCore.userConfig.setUserConfigByKey(
+            userId=tmp_hagID,
+            userType='group',
+            platform=plugin_event.platform['platform'],
+            userConfigKey='logStatus',
+            userConfigValue=log_status,
+            botHash=plugin_event.bot_info.hash
+        )
     
     # 如果该UUID不存在，则创建
     if log_uuid not in log_status:
@@ -623,26 +638,28 @@ def init_log_status(log_uuid, plugin_event, tmp_hagID):
 
 def persist_log_status(log_uuid, plugin_event, tmp_hagID):
     """持久化日志状态数据到status_uuid.json"""
-    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+    raw_log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
         userId=tmp_hagID,
         userType='group',
         platform=plugin_event.platform['platform'],
         userConfigKey='logStatus',
         botHash=plugin_event.bot_info.hash
     )
-    if log_status and log_uuid in log_status:
+    log_status = normalize_log_status_config(raw_log_status)
+    if log_uuid in log_status:
         write_status_to_file(log_uuid, log_status[log_uuid])
 
 def clear_log_status(log_uuid, plugin_event, tmp_hagID):
     """清除内存中的日志状态数据"""
-    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+    raw_log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
         userId=tmp_hagID,
         userType='group',
         platform=plugin_event.platform['platform'],
         userConfigKey='logStatus',
         botHash=plugin_event.bot_info.hash
     )
-    if log_status and log_uuid in log_status:
+    log_status = normalize_log_status_config(raw_log_status)
+    if log_uuid in log_status:
         del log_status[log_uuid]
         OlivaDiceCore.userConfig.setUserConfigByKey(
             userId=tmp_hagID,
@@ -655,14 +672,15 @@ def clear_log_status(log_uuid, plugin_event, tmp_hagID):
 
 def get_log_status(log_uuid, plugin_event, tmp_hagID):
     """获取日志状态数据"""
-    log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
+    raw_log_status = OlivaDiceCore.userConfig.getUserConfigByKey(
         userId=tmp_hagID,
         userType='group',
         platform=plugin_event.platform['platform'],
         userConfigKey='logStatus',
         botHash=plugin_event.bot_info.hash
     )
-    if log_status and log_uuid in log_status:
+    log_status = normalize_log_status_config(raw_log_status)
+    if log_uuid in log_status:
         return log_status[log_uuid]
     
     # 从文件中读取
