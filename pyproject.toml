@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "olivos-plugin-OlivaDiceLogger"
-version = "3.0.31"
+version = "3.0.32"
 description = "本模块为OlivaDice的日志模块，提供了跑团日志记录器，它可以在跑团过程中对日志进行记录，并由结果生成跑团日志，与在线的跑团日志渲染器进行联动、或发送日志邮件。"
 readme = "README.md"
 requires-python = ">=3.7"

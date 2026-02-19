@@ -67,25 +67,35 @@ def migrate_database_config():
             config = OlivaDiceCore.userConfig.dictUserConfigData[userHash][botHash]
             if config.get('userType', '') != 'group':
                 continue
-            logNowName = config.get('configNote', {}).get('logNowName')
-            logNameList = config.get('configNote', {}).get('logNameList', [])
-            logNameTimeDict = config.get('configNote', {}).get('logNameTimeDict', {})
+            config_note = config.get('configNote')
+            if not isinstance(config_note, dict):
+                config_note = {}
+                config['configNote'] = config_note
+            logNowName = config_note.get('logNowName')
+            logNameList = config_note.get('logNameList', [])
+            logNameTimeDict = config_note.get('logNameTimeDict', {})
+            if not isinstance(logNameList, list):
+                logNameList = []
+            if not isinstance(logNameTimeDict, dict):
+                logNameTimeDict = {}
+            config_note['logNameList'] = logNameList
+            config_note['logNameTimeDict'] = logNameTimeDict
             if logNowName and not logNameList:
                 # 从logNowName提取UUID（去掉"log_"前缀）
                 log_uuid = logNowName.replace('log_', '', 1)
                 # 设置default
-                config['configNote']['logActiveName'] = 'default'
-                config['configNote']['logNameList'] = ['default']
-                config['configNote']['logNameDict'] = {'default': log_uuid}
-                config['configNote']['logNameTimeDict']['default'] = {'start_time': 0, 'end_time': 0, 'total_time': 0}
-                config['configNote']['logNowName'] = None
+                config_note['logActiveName'] = 'default'
+                config_note['logNameList'] = ['default']
+                config_note['logNameDict'] = {'default': log_uuid}
+                config_note['logNameTimeDict']['default'] = {'start_time': 0, 'end_time': 0, 'total_time': 0}
+                config_note['logNowName'] = None
                 OlivaDiceCore.userConfig.listUserConfigDataUpdate.append(userHash)
             if logNameList:
                 # 时间兼容
                 for name in logNameList:
                     if name not in logNameTimeDict:
                         logNameTimeDict[name] = {'start_time': 0, 'end_time': 0, 'total_time': 0}
-                config['configNote']['logNameTimeDict'] = logNameTimeDict
+                config_note['logNameTimeDict'] = logNameTimeDict
                 OlivaDiceCore.userConfig.listUserConfigDataUpdate.append(userHash)
 
     for userHash in set(OlivaDiceCore.userConfig.listUserConfigDataUpdate):
