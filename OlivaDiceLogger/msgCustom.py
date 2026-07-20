@@ -14,7 +14,14 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 @Desc      :   None
 """
 
-dictConsoleSwitchTemplate = {'default': {'defaultLogQuote': 0, 'defaultLogUsePcName': 0, 'defaultLogUploadTimeout': 60}}
+dictConsoleSwitchTemplate = {
+    'default': {
+        'defaultLogQuote': 0,
+        'defaultLogUsePcName': 0,
+        'defaultLogUploadTimeout': 60,
+        'defaultLogContinueCodeTTL': 86400,
+    }
+}
 
 dictConfigKeyToConsoleSwitchMapping = {
     'logQuote': 'defaultLogQuote',
@@ -90,6 +97,14 @@ dictStrCustom = {
     'strLoggerStatPcCardSeparator': '\n\n',
     'strLoggerStatUserFormat': '[{tUserName}]的数据:\n{tUserStatData}',
     'strLoggerStatUserSeparator': '\n\n',
+    # 跨平台续接
+    'strLoggerLogCodeNoUUID': '请指定日志UUID\n格式: .log code <UUID>',
+    'strLoggerLogCodeNotFound': '未找到UUID [{tLogUUID}] 对应的日志文件',
+    'strLoggerLogCodeSuccess': '已为日志 [{tLogName}] 生成续接码\nUUID: {tLogUUID}\n续接码: {tContinueCode}\n一次性，使用后失效\n在目标群使用: .log continue {tLogUUID} {tContinueCode}',
+    'strLoggerLogContinueNoArgs': '请指定UUID和续接码\n格式: .log continue <UUID> <续接码>',
+    'strLoggerLogContinueCodeInvalid': '续接码无效或已过期',
+    'strLoggerLogContinueNotFound': '未找到UUID对应的日志文件，续接码已作废',
+    'strLoggerLogContinueSuccess': '日志续接成功！\n日志 [{tLogName}] (UUID: {tLogUUID})\n当前已记录 {tLogLines} 行，累计时长 {tLogTime}\n已开始记录',
 }
 # flake8: NOQA OFF
 
@@ -110,6 +125,7 @@ dictTValue = {
     'tTotalSuccess': '0',
     'tTotalFail': '0',
     'tSuccessRate': '0.00',
+    'tContinueCode': 'N/A',
 }
 
 dictHelpDocTemp = {
@@ -135,6 +151,10 @@ dictHelpDocTemp = {
     开启后日志记录时将使用发送者的角色卡名字
 .log stat (UUID) (all/@用户) 查看日志统计数据
     不带参数查看当前活跃日志中自己的数据
+.log code [UUID] 生成续接码(仅Master)
+    续接码一次性，使用后失效
+.log resume [UUID] [续接码] 跨平台续接日志
+    在任意群使用，使用后该群可续接日志
 
 日志的默认名称为 default
 日志上传存在失败可能，届时请联系后台管理索取""",
