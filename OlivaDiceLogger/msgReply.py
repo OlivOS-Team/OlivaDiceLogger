@@ -181,8 +181,8 @@ def unity_reply(plugin_event, Proc):
             tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'log')
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
-            # log stop/code 无视锁定状态，直接执行
-            if not isMatchWordStart(tmp_reast_str, ['stop', 'halt', 'code']):
+            # log stop/code/id 无视锁定状态，直接执行
+            if not isMatchWordStart(tmp_reast_str, ['stop', 'halt', 'code', 'id']):
                 log_ending_lock = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId=tmp_hagID,
                     userType='group',
@@ -2363,6 +2363,14 @@ def unity_reply(plugin_event, Proc):
                             )
                     replyMsg(plugin_event, tmp_reply_str)
                 return
+            elif isMatchWordStart(tmp_reast_str, 'id'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'id')
+                dictTValue['tGroupId'] = str(plugin_event.data.group_id)
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogId'], dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
             elif isMatchWordStart(tmp_reast_str, 'code'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'code')
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
@@ -2379,14 +2387,18 @@ def unity_reply(plugin_event, Proc):
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
-                # 参数：UUID（必须）
-                log_uuid = tmp_reast_str.strip()
-                if not log_uuid:
+                # 参数：UUID（36位）+ 群号（可选，默认当前群）
+                tmp_code_input = tmp_reast_str.strip()
+                if len(tmp_code_input) < 36:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                         dictStrCustom['strLoggerLogCodeNoUUID'], dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
+                log_uuid = tmp_code_input[:36]
+                input_group_id = tmp_code_input[36:].strip()
+                if not input_group_id:
+                    input_group_id = str(plugin_event.data.group_id)
                 # 校验 UUID 对应的日志文件是否存在
                 log_dir = OlivaDiceLogger.data.dataPath + OlivaDiceLogger.data.dataLogPath
                 log_files = glob.glob(f'{log_dir}/log_{log_uuid}_*.olivadicelog')
@@ -2394,6 +2406,37 @@ def unity_reply(plugin_event, Proc):
                     dictTValue['tLogUUID'] = log_uuid
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                         dictStrCustom['strLoggerLogCodeNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 校验来源群：该群在当前平台/bot下须持有该 UUID 的活跃日志
+                old_group_hash = OlivaDiceCore.userConfig.getUserHash(
+                    input_group_id, 'group', plugin_event.platform['platform']
+                )
+                old_log_enable = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=old_group_hash,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logEnable',
+                    botHash=plugin_event.bot_info.hash,
+                )
+                old_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=old_group_hash,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameDict',
+                    botHash=plugin_event.bot_info.hash,
+                )
+                old_has_uuid = False
+                if old_log_enable and old_name_dict:
+                    for tmp_v in old_name_dict.values():
+                        if tmp_v == log_uuid:
+                            old_has_uuid = True
+                            break
+                if not old_has_uuid:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeGroupInvalid'], dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
@@ -2417,6 +2460,8 @@ def unity_reply(plugin_event, Proc):
                 OlivaDiceLogger.data.dictContinueCode[log_uuid] = {
                     'code': continue_code,
                     'time': time.time(),
+                    'old_group_hash': old_group_hash,
+                    'old_bot_hash': plugin_event.bot_info.hash,
                 }
                 # 提取日志名用于回复
                 log_filename = os.path.basename(log_files[0])
@@ -2442,21 +2487,14 @@ def unity_reply(plugin_event, Proc):
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
-                # 尝试按空格分割
-                tmp_parts = tmp_args.split(None, 1)
-                if len(tmp_parts) == 2:
-                    log_uuid = tmp_parts[0].strip()
-                    input_code = tmp_parts[1].strip()
-                elif len(tmp_parts) == 1 and len(tmp_parts[0]) > 36:
-                    # 无空格情况：UUID 固定 36 字符（8-4-4-4-12 格式）
-                    log_uuid = tmp_parts[0][:36]
-                    input_code = tmp_parts[0][36:].strip()
-                else:
+                if len(tmp_args) <= 6:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                         dictStrCustom['strLoggerLogContinueNoArgs'], dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
+                input_code = tmp_args[-6:]
+                log_uuid = tmp_args[:-6].strip()
                 if not log_uuid or not input_code:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                         dictStrCustom['strLoggerLogContinueNoArgs'], dictTValue
@@ -2503,6 +2541,76 @@ def unity_reply(plugin_event, Proc):
                     return
                 # 续接码验证通过，立即销毁（一次性）
                 del OlivaDiceLogger.data.dictContinueCode[log_uuid]
+                # 关闭旧群日志（跨群/跨 bot 时）
+                old_group_hash = code_entry.get('old_group_hash')
+                old_bot_hash = code_entry.get('old_bot_hash')
+                if old_group_hash and (
+                    old_group_hash != tmp_hagID
+                    or old_bot_hash != plugin_event.bot_info.hash
+                ):
+                    # 旧群 logEnable → False
+                    OlivaDiceCore.userConfig.setUserConfigByKey(
+                        userId=old_group_hash,
+                        userType='group',
+                        platform='',
+                        userConfigKey='logEnable',
+                        userConfigValue=False,
+                        botHash=old_bot_hash,
+                    )
+                    # 旧群 timeDict：补 end_time
+                    old_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId=old_group_hash,
+                        userType='group',
+                        platform='',
+                        userConfigKey='logNameTimeDict',
+                        botHash=old_bot_hash,
+                    )
+                    old_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId=old_group_hash,
+                        userType='group',
+                        platform='',
+                        userConfigKey='logNameDict',
+                        botHash=old_bot_hash,
+                    )
+                    if old_time_dict and old_name_dict:
+                        old_matched_name = None
+                        for tmp_n, tmp_u in old_name_dict.items():
+                            if tmp_u == log_uuid and tmp_n in old_time_dict:
+                                if old_time_dict[tmp_n].get('end_time', 0) == 0:
+                                    tmp_now_time = time.time()
+                                    tmp_start = old_time_dict[tmp_n].get('start_time', 0)
+                                    if tmp_start > 0:
+                                        old_time_dict[tmp_n]['total_time'] = (
+                                            old_time_dict[tmp_n].get('total_time', 0)
+                                            + (tmp_now_time - tmp_start)
+                                        )
+                                    old_time_dict[tmp_n]['end_time'] = tmp_now_time
+                                old_matched_name = tmp_n
+                                break
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userId=old_group_hash,
+                            userType='group',
+                            platform='',
+                            userConfigKey='logNameTimeDict',
+                            userConfigValue=old_time_dict,
+                            botHash=old_bot_hash,
+                        )
+                        # 同步写文件头 total_duration
+                        if old_matched_name:
+                            tmp_old_logName = f'log_{log_uuid}_{old_matched_name}'
+                            tmp_old_file = (
+                                OlivaDiceLogger.data.dataPath
+                                + OlivaDiceLogger.data.dataLogPath
+                                + f'/{tmp_old_logName}.olivadicelog'
+                            )
+                            OlivaDiceLogger.logger.update_log_total_duration(
+                                tmp_old_file,
+                                old_time_dict[old_matched_name].get('total_time', 0),
+                            )
+                    # 持久化旧群 config
+                    OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                        userHash=old_group_hash
+                    )
                 # 提取日志名
                 log_filename = os.path.basename(log_files[0])
                 log_name = log_filename.replace(
@@ -2536,25 +2644,34 @@ def unity_reply(plugin_event, Proc):
                 )
                 if log_name_time_dict is None:
                     log_name_time_dict = {}
-                # 如果本群已有同名日志，追加序号避免冲突
-                tmp_log_name = log_name
-                name_counter = 1
-                while tmp_log_name in log_name_list:
-                    tmp_log_name = f'{log_name}_{name_counter}'
-                    name_counter += 1
-                log_name = tmp_log_name
                 # 从文件读取累计时长（含 fallback），start_time 设为当前
                 file_total_time = OlivaDiceLogger.logger.read_log_total_time_from_file(log_uuid)
                 if file_total_time is None:
                     file_total_time = 0
+                # 检查本群是否已注册该 UUID
+                existing_name = None
+                for tmp_name, tmp_uid in log_name_dict.items():
+                    if tmp_uid == log_uuid:
+                        existing_name = tmp_name
+                        break
+                if existing_name is not None:
+                    # 已存在：复用原条目，重新激活
+                    log_name = existing_name
+                else:
+                    # 新条目：避免同名冲突
+                    tmp_log_name = log_name
+                    name_counter = 1
+                    while tmp_log_name in log_name_list:
+                        tmp_log_name = f'{log_name}_{name_counter}'
+                        name_counter += 1
+                    log_name = tmp_log_name
+                    log_name_list.append(log_name)
+                    log_name_dict[log_name] = log_uuid
                 log_name_time_dict[log_name] = {
                     'start_time': time.time(),
                     'end_time': 0,
                     'total_time': file_total_time,
                 }
-                # 注册到当前群 config
-                log_name_list.append(log_name)
-                log_name_dict[log_name] = log_uuid
                 OlivaDiceCore.userConfig.setUserConfigByKey(
                     userId=tmp_hagID,
                     userType='group',
