@@ -1119,6 +1119,54 @@ def unity_reply(plugin_event, Proc):
                                         ensure_ascii=False,
                                     ),
                                 )
+                            if (
+                                plugin_event.platform['platform'] == 'qqGuild'
+                                and plugin_event.indeAPI.hasAPI('create_markdown_message')
+                            ):
+                                extend_data = plugin_event.data.extend
+                                chat_type = (
+                                    'qq_group'
+                                    if extend_data.get('flag_from_qq', False)
+                                    else 'guild_channel'
+                                )
+                                plugin_event.indeAPI.create_markdown_message(
+                                    chat_type=chat_type,
+                                    chat_id=plugin_event.data.group_id,
+                                    markdown={
+                                        'content': (
+                                            '# 日志提取\n'
+                                            '您的日志将在 7 天后过期，请尽快提取。\n'
+                                            '> OlivaDice - 青果核心掷骰机器人'
+                                        )
+                                    },
+                                    keyboard={
+                                        'content': {
+                                            'rows': [
+                                                {
+                                                    'buttons': [
+                                                        {
+                                                            'id': 'extract_log',
+                                                            'render_data': {
+                                                                'label': '点我提取日志',
+                                                                'visited_label': '已提取',
+                                                                'style': 1,
+                                                            },
+                                                            'action': {
+                                                                'type': 0,
+                                                                'permission': {
+                                                                    'type': 2,
+                                                                },
+                                                                'data': str(dictTValue['tLogUrl']),
+                                                                'unsupport_tips': '当前客户端不支持按钮，请复制上方链接提取',
+                                                            },
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    msg_id=extend_data.get('reply_msg_id'),
+                                )
                         except Exception:
                             traceback.print_exc()
                 except Exception:
