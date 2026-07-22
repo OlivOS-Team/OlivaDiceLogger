@@ -2414,6 +2414,7 @@ def unity_reply(plugin_event, Proc):
             elif isMatchWordStart(tmp_reast_str, 'id'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'id')
                 dictTValue['tGroupId'] = tmp_hagID
+                dictTValue['tPlatform'] = plugin_event.platform['platform']
                 tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                     dictStrCustom['strLoggerLogId'], dictTValue
                 )
