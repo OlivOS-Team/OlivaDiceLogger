@@ -99,10 +99,10 @@ dictStrCustom = {
     'strLoggerStatUserSeparator': '\n\n',
     # 跨平台续接
     'strLoggerLogId': '当前群号/频道号: {tGroupId}',
-    'strLoggerLogCodeNoUUID': '请指定日志UUID\n格式: .log code [UUID] (群号) (平台)\n使用 .log id 查看当前群号',
+    'strLoggerLogCodeNoUUID': '请指定日志UUID\n格式: .log code [UUID] (群号[平台])\n群号后可接平台名如 1016912041qq\n使用 .log id 查看当前群号',
     'strLoggerLogCodeNotFound': '未找到UUID [{tLogUUID}] 对应的日志文件',
-    'strLoggerLogCodeGroupInvalid': '指定的群/频道未找到UUID [{tLogUUID}] 的活跃日志，无法生成续接码',
-    'strLoggerLogCodeSuccess': '已为日志 [{tLogName}] 生成续接码\nUUID: {tLogUUID}\n续接码: {tContinueCode}\n一次性，使用后失效\n在目标群使用: .log continue {tLogUUID} {tContinueCode}',
+    'strLoggerLogCodeGroupInvalid': '指定的群/频道未找到UUID [{tLogUUID}] 的日志记录，无法生成续接码',
+    'strLoggerLogCodeSuccess': '已为日志 [{tLogName}] 生成续接码\nUUID: {tLogUUID}\n续接码: {tContinueCode}\n一次性，使用后失效\n在目标群使用: .log resume {tLogUUID} {tContinueCode}',
     'strLoggerLogContinueNoArgs': '请指定UUID和续接码\n格式: .log resume [UUID] [续接码]',
     'strLoggerLogContinueCodeInvalid': '续接码无效或已过期',
     'strLoggerLogContinueNotFound': '未找到UUID对应的日志文件，续接码已作废',
@@ -155,10 +155,12 @@ dictHelpDocTemp = {
 .log stat (UUID) (all/@用户) 查看日志统计数据
     不带参数查看当前活跃日志中自己的数据
 .log id 查看当前群号/频道号
-.log code [UUID] (群号) (平台) 生成跨平台续接码(仅Master)
+.log code [UUID] (群号[平台]) 生成跨平台续接码(仅Master)
     群号为来源群，不填默认当前群
-    平台不填默认当前平台，跨平台时需指定
-    需该群正在记录此UUID，续接码一次性
+    群号后可接平台名(如 1016912041qq)，无需空格分隔，从右往左贪婪匹配
+    省略平台则默认当前平台，跨平台时需指定
+    需该群有该UUID的日志记录即可，日志可已结束
+    UUID后直接加 end 可跳过群校验(用于已 end 的日志)
 .log resume [UUID] [续接码] 跨平台续接日志
     别名: .log continue
     在任意群使用，无需身份验证

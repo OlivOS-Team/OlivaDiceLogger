@@ -2413,7 +2413,7 @@ def unity_reply(plugin_event, Proc):
                 return
             elif isMatchWordStart(tmp_reast_str, 'id'):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'id')
-                dictTValue['tGroupId'] = str(plugin_event.data.group_id)
+                dictTValue['tGroupId'] = tmp_hagID
                 tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                     dictStrCustom['strLoggerLogId'], dictTValue
                 )
@@ -2435,7 +2435,8 @@ def unity_reply(plugin_event, Proc):
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
-                # 参数：UUID（36位）+ 群号（可选）+ 平台（可选）
+                # 参数：UUID（36位）+ 群号（可选，支持右端接平台名）
+                # 从右往左贪婪匹配：群号后可直接接平台名，无需空格分隔
                 tmp_code_input = tmp_reast_str.strip()
                 if len(tmp_code_input) < 36:
                     tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
@@ -2445,14 +2446,41 @@ def unity_reply(plugin_event, Proc):
                     return
                 log_uuid = tmp_code_input[:36]
                 tmp_code_rest = tmp_code_input[36:].strip()
-                tmp_code_parts = tmp_code_rest.split() if tmp_code_rest else []
-                if len(tmp_code_parts) >= 1:
-                    input_group_id = tmp_code_parts[0]
+                # end 后缀：日志已 end，跳过群校验直接基于文件生成续接码
+                flag_log_ended = (tmp_code_rest == 'end')
+                if flag_log_ended:
+                    old_group_hash = None
+                    input_group_id = str(plugin_event.data.group_id)
+                    input_platform = plugin_event.platform['platform']
+                elif tmp_code_rest:
+                    # 双向贪婪匹配平台名：先右再左
+                    # 平台名列表按长度降序，长名优先匹配（如 qqGuild 优先于 qq）
+                    platform_list_sorted = sorted(
+                        OlivOS.accountMetadataAPI.accountTypeDataList_platform,
+                        key=len, reverse=True
+                    )
+                    matched_platform = None
+                    # 从右往左
+                    for p in platform_list_sorted:
+                        if tmp_code_rest.endswith(p):
+                            matched_platform = p
+                            matched_group_id = tmp_code_rest[:-len(p)]
+                            break
+                    # 从右未命中则从左往右
+                    if matched_platform is None:
+                        for p in platform_list_sorted:
+                            if tmp_code_rest.startswith(p):
+                                matched_platform = p
+                                matched_group_id = tmp_code_rest[len(p):]
+                                break
+                    if matched_platform:
+                        input_platform = matched_platform
+                        input_group_id = matched_group_id.strip() or str(plugin_event.data.group_id)
+                    else:
+                        input_group_id = tmp_code_rest.strip()
+                        input_platform = plugin_event.platform['platform']
                 else:
                     input_group_id = str(plugin_event.data.group_id)
-                if len(tmp_code_parts) >= 2:
-                    input_platform = tmp_code_parts[1]
-                else:
                     input_platform = plugin_event.platform['platform']
                 # 校验 UUID 对应的日志文件是否存在
                 log_dir = OlivaDiceLogger.data.dataPath + OlivaDiceLogger.data.dataLogPath
@@ -2464,29 +2492,27 @@ def unity_reply(plugin_event, Proc):
                     )
                     replyMsg(plugin_event, tmp_reply_str)
                     return
-                # 校验来源群：遍历该群所有 botHash 条目，须持有该 UUID 的活跃日志
-                old_group_hash = OlivaDiceCore.userConfig.getUserHash(
-                    input_group_id, 'group', input_platform
-                )
-                old_has_uuid = False
-                tmp_user_config_data = OlivaDiceCore.userConfig.dictUserConfigData
-                if old_group_hash in tmp_user_config_data:
-                    for tmp_bot_key in tmp_user_config_data[old_group_hash]:
-                        tmp_entry = tmp_user_config_data[old_group_hash][tmp_bot_key]
-                        tmp_config_note = tmp_entry.get('configNote', {})
-                        if not tmp_config_note.get('logEnable', False):
-                            continue
-                        tmp_name_dict = tmp_config_note.get('logNameDict', {})
-                        if log_uuid in tmp_name_dict.values():
-                            old_has_uuid = True
-                            break
-                if not old_has_uuid:
-                    dictTValue['tLogUUID'] = log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogCodeGroupInvalid'], dictTValue
+                # 校验来源群（end 后缀跳过）
+                if not flag_log_ended:
+                    old_group_hash = OlivaDiceCore.userConfig.getUserHash(
+                        input_group_id, 'group', input_platform
                     )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
+                    old_has_uuid = False
+                    tmp_user_config_data = OlivaDiceCore.userConfig.dictUserConfigData
+                    if old_group_hash in tmp_user_config_data:
+                        for tmp_bot_key in tmp_user_config_data[old_group_hash]:
+                            tmp_entry = tmp_user_config_data[old_group_hash][tmp_bot_key]
+                            tmp_name_dict = tmp_entry.get('configNote', {}).get('logNameDict', {})
+                            if log_uuid in tmp_name_dict.values():
+                                old_has_uuid = True
+                                break
+                    if not old_has_uuid:
+                        dictTValue['tLogUUID'] = log_uuid
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogCodeGroupInvalid'], dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
                 # 懒加载：清理过期码
                 tmp_ttl = OlivaDiceCore.console.getConsoleSwitchByHash(
                     'defaultLogContinueCodeTTL', plugin_event.bot_info.hash
