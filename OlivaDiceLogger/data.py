@@ -14,8 +14,8 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 @Desc      :   None
 """
 
-OlivaDiceLogger_ver = '3.0.35'
-OlivaDiceLogger_svn = 43
+OlivaDiceLogger_ver = '3.0.36'
+OlivaDiceLogger_svn = 44
 OlivaDiceLogger_ver_short = '%s(%s)' % (str(OlivaDiceLogger_ver), str(OlivaDiceLogger_svn))
 
 dataPath = './plugin/data/OlivaDice/unity'
@@ -27,5 +27,5 @@ dataLogUpload = 'http://api.dice.center/dicelogger/'
 dataLogPainterUrl = 'https://logrender.dice.center/#2-'
 
 # 跨平台续接码（纯内存，不落盘）
-# 结构: {uuid_str: {'code': 'A3F9K2', 'time': 1721448000.0}}
+# 结构: {uuid_str: {'code': 'A3F9K2', 'time': 1721448000.0, 'old_group_hash': 'md5hex'}}
 dictContinueCode = {}
