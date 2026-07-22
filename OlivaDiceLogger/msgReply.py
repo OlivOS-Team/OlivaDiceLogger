@@ -576,17 +576,17 @@ def unity_reply(plugin_event, Proc):
                         except Exception:
                             # 如果引用回复失败，抛出异常回复
                             dictTValue['tLogName'] = log_name
-                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            tmp_reply_str_quote_error = OlivaDiceCore.msgCustomManager.formatReplySTR(
                                 dictStrCustom['strLoggerLogQuoteError'], dictTValue
                             )
-                            replyMsg(plugin_event, tmp_reply_str)
+                            replyMsg(plugin_event, tmp_reply_str_quote_error)
                     else:
                         # 其他平台不支持引用回复
                         dictTValue['tLogName'] = log_name
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        tmp_reply_str_quote_error = OlivaDiceCore.msgCustomManager.formatReplySTR(
                             dictStrCustom['strLoggerLogQuoteError'], dictTValue
                         )
-                        replyMsg(plugin_event, tmp_reply_str)
+                        replyMsg(plugin_event, tmp_reply_str_quote_error)
                 # 正常回复
                 replyMsg(plugin_event, tmp_reply_str)
                 return
@@ -2799,7 +2799,6 @@ def unity_reply(plugin_event, Proc):
                     platform=tmp_pc_platform,
                     userConfigKey='logQuote',
                     botHash=plugin_event.bot_info.hash,
-                    default=False,
                 )
                 if isMatchWordStart(tmp_reast_str, 'on', fullMatch=True):
                     # log quote on 命令
@@ -2938,7 +2937,6 @@ def unity_reply(plugin_event, Proc):
                     platform=tmp_pc_platform,
                     userConfigKey='logUsePcName',
                     botHash=plugin_event.bot_info.hash,
-                    default=False,
                 )
                 if isMatchWordStart(tmp_reast_str, 'on', fullMatch=True):
                     # log pcname on 命令
