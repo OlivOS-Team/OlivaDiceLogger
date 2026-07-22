@@ -181,8 +181,8 @@ def unity_reply(plugin_event, Proc):
             tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'log')
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
-            # log stop 无视锁定状态，直接执行
-            if not isMatchWordStart(tmp_reast_str, ['stop', 'halt']):
+            # log stop/code/id 无视锁定状态，直接执行
+            if not isMatchWordStart(tmp_reast_str, ['stop', 'halt', 'code', 'id']):
                 log_ending_lock = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId=tmp_hagID,
                     userType='group',
@@ -1118,6 +1118,54 @@ def unity_reply(plugin_event, Proc):
                                         ],
                                         ensure_ascii=False,
                                     ),
+                                )
+                            if (
+                                plugin_event.platform['platform'] == 'qqGuild'
+                                and plugin_event.indeAPI.hasAPI('create_markdown_message')
+                            ):
+                                extend_data = plugin_event.data.extend
+                                chat_type = (
+                                    'qq_group'
+                                    if extend_data.get('flag_from_qq', False)
+                                    else 'guild_channel'
+                                )
+                                plugin_event.indeAPI.create_markdown_message(
+                                    chat_type=chat_type,
+                                    chat_id=plugin_event.data.group_id,
+                                    markdown={
+                                        'content': (
+                                            '# 日志提取\n'
+                                            '您的日志将在 7 天后过期，请尽快提取。\n'
+                                            '> OlivaDice - 青果核心掷骰机器人'
+                                        )
+                                    },
+                                    keyboard={
+                                        'content': {
+                                            'rows': [
+                                                {
+                                                    'buttons': [
+                                                        {
+                                                            'id': 'extract_log',
+                                                            'render_data': {
+                                                                'label': '点我提取日志',
+                                                                'visited_label': '已提取',
+                                                                'style': 1,
+                                                            },
+                                                            'action': {
+                                                                'type': 0,
+                                                                'permission': {
+                                                                    'type': 2,
+                                                                },
+                                                                'data': str(dictTValue['tLogUrl']),
+                                                                'unsupport_tips': '当前客户端不支持按钮，请复制上方链接提取',
+                                                            },
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    msg_id=extend_data.get('reply_msg_id'),
                                 )
                         except Exception:
                             traceback.print_exc()
@@ -2362,6 +2410,356 @@ def unity_reply(plugin_event, Proc):
                                 dictStrCustom['strLoggerLogStatSelf'], dictTValue
                             )
                     replyMsg(plugin_event, tmp_reply_str)
+                return
+            elif isMatchWordStart(tmp_reast_str, 'id'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'id')
+                dictTValue['tGroupId'] = str(plugin_event.data.group_id)
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogId'], dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+            elif isMatchWordStart(tmp_reast_str, 'code'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'code')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                # 权限：仅骰主
+                flag_is_from_master = OlivaDiceCore.ordinaryInviteManager.isInMasterList(
+                    plugin_event.bot_info.hash,
+                    OlivaDiceCore.userConfig.getUserHash(
+                        plugin_event.data.user_id, 'user', plugin_event.platform['platform']
+                    ),
+                )
+                if not flag_is_from_master:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strNeedMaster'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 参数：UUID（36位）+ 群号（可选）+ 平台（可选）
+                tmp_code_input = tmp_reast_str.strip()
+                if len(tmp_code_input) < 36:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeNoUUID'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                log_uuid = tmp_code_input[:36]
+                tmp_code_rest = tmp_code_input[36:].strip()
+                tmp_code_parts = tmp_code_rest.split() if tmp_code_rest else []
+                if len(tmp_code_parts) >= 1:
+                    input_group_id = tmp_code_parts[0]
+                else:
+                    input_group_id = str(plugin_event.data.group_id)
+                if len(tmp_code_parts) >= 2:
+                    input_platform = tmp_code_parts[1]
+                else:
+                    input_platform = plugin_event.platform['platform']
+                # 校验 UUID 对应的日志文件是否存在
+                log_dir = OlivaDiceLogger.data.dataPath + OlivaDiceLogger.data.dataLogPath
+                log_files = glob.glob(f'{log_dir}/log_{log_uuid}_*.olivadicelog')
+                if not log_files:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 校验来源群：遍历该群所有 botHash 条目，须持有该 UUID 的活跃日志
+                old_group_hash = OlivaDiceCore.userConfig.getUserHash(
+                    input_group_id, 'group', input_platform
+                )
+                old_has_uuid = False
+                tmp_user_config_data = OlivaDiceCore.userConfig.dictUserConfigData
+                if old_group_hash in tmp_user_config_data:
+                    for tmp_bot_key in tmp_user_config_data[old_group_hash]:
+                        tmp_entry = tmp_user_config_data[old_group_hash][tmp_bot_key]
+                        tmp_config_note = tmp_entry.get('configNote', {})
+                        if not tmp_config_note.get('logEnable', False):
+                            continue
+                        tmp_name_dict = tmp_config_note.get('logNameDict', {})
+                        if log_uuid in tmp_name_dict.values():
+                            old_has_uuid = True
+                            break
+                if not old_has_uuid:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeGroupInvalid'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 懒加载：清理过期码
+                tmp_ttl = OlivaDiceCore.console.getConsoleSwitchByHash(
+                    'defaultLogContinueCodeTTL', plugin_event.bot_info.hash
+                )
+                if tmp_ttl is None:
+                    tmp_ttl = 86400
+                if tmp_ttl > 0:
+                    tmp_now = time.time()
+                    tmp_expired_keys = [
+                        k for k, v in OlivaDiceLogger.data.dictContinueCode.items()
+                        if tmp_now - v['time'] > tmp_ttl
+                    ]
+                    for k in tmp_expired_keys:
+                        del OlivaDiceLogger.data.dictContinueCode[k]
+                # 生成 6 位续接码（uuid4 hex 取前 6 位，大写）
+                continue_code = uuid.uuid4().hex[:6].upper()
+                # 存入内存（覆盖旧码，同一 UUID 同时只保留一个有效码）
+                OlivaDiceLogger.data.dictContinueCode[log_uuid] = {
+                    'code': continue_code,
+                    'time': time.time(),
+                    'old_group_hash': old_group_hash,
+                }
+                # 提取日志名用于回复
+                log_filename = os.path.basename(log_files[0])
+                log_name_display = log_filename.replace(
+                    f'log_{log_uuid}_', ''
+                ).replace('.olivadicelog', '')
+                dictTValue['tLogUUID'] = log_uuid
+                dictTValue['tLogName'] = log_name_display
+                dictTValue['tContinueCode'] = continue_code
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogCodeSuccess'], dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+            elif isMatchWordStart(tmp_reast_str, ['continue', 'resume']):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['continue', 'resume'])
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                # 解析参数：UUID + 续接码
+                tmp_args = tmp_reast_str.strip()
+                if not tmp_args:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogContinueNoArgs'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                if len(tmp_args) <= 6:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogContinueNoArgs'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                input_code = tmp_args[-6:]
+                log_uuid = tmp_args[:-6].strip()
+                if not log_uuid or not input_code:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogContinueNoArgs'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 懒加载：遍历全量清理所有过期码
+                tmp_ttl = OlivaDiceCore.console.getConsoleSwitchByHash(
+                    'defaultLogContinueCodeTTL', plugin_event.bot_info.hash
+                )
+                if tmp_ttl is None:
+                    tmp_ttl = 86400
+                if tmp_ttl > 0:
+                    tmp_now = time.time()
+                    tmp_expired_keys = [
+                        k for k, v in OlivaDiceLogger.data.dictContinueCode.items()
+                        if tmp_now - v['time'] > tmp_ttl
+                    ]
+                    for k in tmp_expired_keys:
+                        del OlivaDiceLogger.data.dictContinueCode[k]
+                # 校验续接码（不存在/过期/重载丢失/码不匹配 → 统一回复）
+                if log_uuid not in OlivaDiceLogger.data.dictContinueCode:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogContinueCodeInvalid'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                code_entry = OlivaDiceLogger.data.dictContinueCode[log_uuid]
+                if input_code.upper() != code_entry['code']:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogContinueCodeInvalid'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 校验 UUID 对应的日志文件是否存在
+                log_dir = OlivaDiceLogger.data.dataPath + OlivaDiceLogger.data.dataLogPath
+                log_files = glob.glob(f'{log_dir}/log_{log_uuid}_*.olivadicelog')
+                if not log_files:
+                    del OlivaDiceLogger.data.dictContinueCode[log_uuid]
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogContinueNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 续接码验证通过，立即销毁（一次性）
+                del OlivaDiceLogger.data.dictContinueCode[log_uuid]
+                # 关闭旧群日志（跨群/跨平台时）
+                old_group_hash = code_entry.get('old_group_hash')
+                tmp_current_group_hash = OlivaDiceCore.userConfig.getUserHash(
+                    tmp_hagID, 'group', plugin_event.platform['platform']
+                )
+                if old_group_hash and old_group_hash != tmp_current_group_hash:
+                    tmp_user_config_data = OlivaDiceCore.userConfig.dictUserConfigData
+                    if old_group_hash in tmp_user_config_data:
+                        for tmp_bot_key in tmp_user_config_data[old_group_hash]:
+                            tmp_entry = tmp_user_config_data[old_group_hash][tmp_bot_key]
+                            tmp_config_note = tmp_entry.get('configNote', {})
+                            if not tmp_config_note.get('logEnable', False):
+                                continue
+                            tmp_name_dict = tmp_config_note.get('logNameDict', {})
+                            if log_uuid not in tmp_name_dict.values():
+                                continue
+                            # 关闭该 botHash 下的日志
+                            tmp_config_note['logEnable'] = False
+                            # 补时间
+                            tmp_time_dict = tmp_config_note.get('logNameTimeDict', {})
+                            if tmp_time_dict and tmp_name_dict:
+                                for tmp_n, tmp_u in tmp_name_dict.items():
+                                    if tmp_u != log_uuid or tmp_n not in tmp_time_dict:
+                                        continue
+                                    if tmp_time_dict[tmp_n].get('end_time', 0) == 0:
+                                        tmp_now_time = time.time()
+                                        tmp_start = tmp_time_dict[tmp_n].get('start_time', 0)
+                                        if tmp_start > 0:
+                                            tmp_time_dict[tmp_n]['total_time'] = (
+                                                tmp_time_dict[tmp_n].get('total_time', 0)
+                                                + (tmp_now_time - tmp_start)
+                                            )
+                                        tmp_time_dict[tmp_n]['end_time'] = tmp_now_time
+                                    # 同步写文件头 total_duration
+                                    tmp_old_logName = f'log_{log_uuid}_{tmp_n}'
+                                    tmp_old_file = (
+                                        OlivaDiceLogger.data.dataPath
+                                        + OlivaDiceLogger.data.dataLogPath
+                                        + f'/{tmp_old_logName}.olivadicelog'
+                                    )
+                                    OlivaDiceLogger.logger.update_log_total_duration(
+                                        tmp_old_file,
+                                        tmp_time_dict[tmp_n].get('total_time', 0),
+                                    )
+                                    break
+                                tmp_config_note['logNameTimeDict'] = tmp_time_dict
+                        # 持久化旧群 config
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash=old_group_hash
+                        )
+                # 提取日志名
+                log_filename = os.path.basename(log_files[0])
+                log_name = log_filename.replace(
+                    f'log_{log_uuid}_', ''
+                ).replace('.olivadicelog', '')
+                # 读取当前群 config
+                log_name_list = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameList',
+                    botHash=plugin_event.bot_info.hash,
+                )
+                if log_name_list is None:
+                    log_name_list = []
+                log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameDict',
+                    botHash=plugin_event.bot_info.hash,
+                )
+                if log_name_dict is None:
+                    log_name_dict = {}
+                log_name_time_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameTimeDict',
+                    botHash=plugin_event.bot_info.hash,
+                )
+                if log_name_time_dict is None:
+                    log_name_time_dict = {}
+                # 从文件读取累计时长（含 fallback），start_time 设为当前
+                file_total_time = OlivaDiceLogger.logger.read_log_total_time_from_file(log_uuid)
+                if file_total_time is None:
+                    file_total_time = 0
+                # 检查本群是否已注册该 UUID
+                existing_name = None
+                for tmp_name, tmp_uid in log_name_dict.items():
+                    if tmp_uid == log_uuid:
+                        existing_name = tmp_name
+                        break
+                if existing_name is not None:
+                    # 已存在：复用原条目，重新激活
+                    log_name = existing_name
+                else:
+                    # 新条目：避免同名冲突
+                    tmp_log_name = log_name
+                    name_counter = 1
+                    while tmp_log_name in log_name_list:
+                        tmp_log_name = f'{log_name}_{name_counter}'
+                        name_counter += 1
+                    log_name = tmp_log_name
+                    log_name_list.append(log_name)
+                    log_name_dict[log_name] = log_uuid
+                log_name_time_dict[log_name] = {
+                    'start_time': time.time(),
+                    'end_time': 0,
+                    'total_time': file_total_time,
+                }
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameList',
+                    userConfigValue=log_name_list,
+                    botHash=plugin_event.bot_info.hash,
+                )
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameDict',
+                    userConfigValue=log_name_dict,
+                    botHash=plugin_event.bot_info.hash,
+                )
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logNameTimeDict',
+                    userConfigValue=log_name_time_dict,
+                    botHash=plugin_event.bot_info.hash,
+                )
+                # 设为活跃日志并开始记录（不触发 logQuote）
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logActiveName',
+                    userConfigValue=log_name,
+                    botHash=plugin_event.bot_info.hash,
+                )
+                OlivaDiceCore.userConfig.setUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=plugin_event.platform['platform'],
+                    userConfigKey='logEnable',
+                    userConfigValue=True,
+                    botHash=plugin_event.bot_info.hash,
+                )
+                # 持久化
+                OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                    userHash=OlivaDiceCore.userConfig.getUserHash(
+                        tmp_hagID, 'group', plugin_event.platform['platform']
+                    )
+                )
+                # 确保日志文件有 duration 头（兼容老文件）
+                tmp_logName = f'log_{log_uuid}_{log_name}'
+                OlivaDiceLogger.logger.init_log_file(tmp_logName)
+                # 回复（不做 logQuote，跨平台 message_id 无意义）
+                dictTValue['tLogUUID'] = log_uuid
+                dictTValue['tLogName'] = log_name
+                dictTValue['tLogLines'] = str(OlivaDiceLogger.logger.get_log_lines(tmp_logName))
+                total_time = OlivaDiceLogger.logger.read_log_total_time_from_file(log_uuid)
+                dictTValue['tLogTime'] = OlivaDiceLogger.logger.format_duration(
+                    int(total_time) if total_time else 0
+                )
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogContinueSuccess'], dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
                 return
             elif isMatchWordStart(tmp_reast_str, ['quote', 'reply']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['quote', 'reply'])

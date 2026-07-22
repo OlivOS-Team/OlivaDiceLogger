@@ -14,7 +14,14 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 @Desc      :   None
 """
 
-dictConsoleSwitchTemplate = {'default': {'defaultLogQuote': 0, 'defaultLogUsePcName': 0, 'defaultLogUploadTimeout': 60}}
+dictConsoleSwitchTemplate = {
+    'default': {
+        'defaultLogQuote': 0,
+        'defaultLogUsePcName': 0,
+        'defaultLogUploadTimeout': 60,
+        'defaultLogContinueCodeTTL': 86400,
+    }
+}
 
 dictConfigKeyToConsoleSwitchMapping = {
     'logQuote': 'defaultLogQuote',
@@ -90,6 +97,16 @@ dictStrCustom = {
     'strLoggerStatPcCardSeparator': '\n\n',
     'strLoggerStatUserFormat': '[{tUserName}]的数据:\n{tUserStatData}',
     'strLoggerStatUserSeparator': '\n\n',
+    # 跨平台续接
+    'strLoggerLogId': '当前群号/频道号: {tGroupId}',
+    'strLoggerLogCodeNoUUID': '请指定日志UUID\n格式: .log code [UUID] (群号) (平台)\n使用 .log id 查看当前群号',
+    'strLoggerLogCodeNotFound': '未找到UUID [{tLogUUID}] 对应的日志文件',
+    'strLoggerLogCodeGroupInvalid': '指定的群/频道未找到UUID [{tLogUUID}] 的活跃日志，无法生成续接码',
+    'strLoggerLogCodeSuccess': '已为日志 [{tLogName}] 生成续接码\nUUID: {tLogUUID}\n续接码: {tContinueCode}\n一次性，使用后失效\n在目标群使用: .log continue {tLogUUID} {tContinueCode}',
+    'strLoggerLogContinueNoArgs': '请指定UUID和续接码\n格式: .log resume [UUID] [续接码]',
+    'strLoggerLogContinueCodeInvalid': '续接码无效或已过期',
+    'strLoggerLogContinueNotFound': '未找到UUID对应的日志文件，续接码已作废',
+    'strLoggerLogContinueSuccess': '日志续接成功！\n日志 [{tLogName}] (UUID: {tLogUUID})\n当前已记录 {tLogLines} 行，累计时长 {tLogTime}\n已开始记录',
 }
 # flake8: NOQA OFF
 
@@ -110,6 +127,8 @@ dictTValue = {
     'tTotalSuccess': '0',
     'tTotalFail': '0',
     'tSuccessRate': '0.00',
+    'tContinueCode': 'N/A',
+    'tGroupId': 'N/A',
 }
 
 dictHelpDocTemp = {
@@ -135,6 +154,14 @@ dictHelpDocTemp = {
     开启后日志记录时将使用发送者的角色卡名字
 .log stat (UUID) (all/@用户) 查看日志统计数据
     不带参数查看当前活跃日志中自己的数据
+.log id 查看当前群号/频道号
+.log code [UUID] (群号) (平台) 生成跨平台续接码(仅Master)
+    群号为来源群，不填默认当前群
+    平台不填默认当前平台，跨平台时需指定
+    需该群正在记录此UUID，续接码一次性
+.log resume [UUID] [续接码] 跨平台续接日志
+    别名: .log continue
+    在任意群使用，无需身份验证
 
 日志的默认名称为 default
 日志上传存在失败可能，届时请联系后台管理索取""",

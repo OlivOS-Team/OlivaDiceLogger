@@ -22,6 +22,7 @@ import uuid
 import re
 import json
 import os
+import glob
 import traceback
 import threading
 import requests as req
@@ -44,8 +45,6 @@ def check_and_process_compatibility():
     migrate_database_config()
     log_dir = f'{dataPath}{dataLogPath}'
     if os.path.exists(log_dir):
-        import glob
-
         for ext in ['.olivadicelog', '.trpglog', '_temp.trpglog']:
             pattern = os.path.join(log_dir, f'*{ext}')
             for filepath in glob.glob(pattern):
@@ -474,6 +473,49 @@ def update_log_total_duration(dataLogFile, total_duration):
                 f.writelines(updated_lines)
     except Exception:
         traceback.print_exc()
+
+
+def read_log_total_time_from_file(log_uuid):
+    """
+    从 .olivadicelog 文件读取累计时长。
+    优先读文件头 log_total_duration 记录的 total_time；
+    若 total_time 为 0（从未成功 off），则 fallback 到首条与末条消息的时间差。
+    返回 float（秒），文件不存在返回 None。
+    """
+    dataPath = OlivaDiceLogger.data.dataPath
+    dataLogPath = OlivaDiceLogger.data.dataLogPath
+    log_dir = dataPath + dataLogPath
+    log_files = glob.glob(f'{log_dir}/log_{log_uuid}_*.olivadicelog')
+    if not log_files:
+        return None
+    try:
+        total_time = 0
+        first_msg_time = None
+        last_msg_time = None
+        with open(log_files[0], 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if record.get('type') == 'log_total_duration':
+                    total_time = record.get('total_time', 0)
+                elif 'time' in record:
+                    if first_msg_time is None:
+                        first_msg_time = record['time']
+                    last_msg_time = record['time']
+        # total_time > 0 说明有成功 off 过，累计值可信
+        if total_time > 0:
+            return total_time
+        # total_time == 0：从未成功 off，用首尾时间差近似
+        if first_msg_time is not None and last_msg_time is not None:
+            return last_msg_time - first_msg_time
+        return 0
+    except Exception:
+        return 0
 
 
 def releaseLogFile(logName, total_duration=0, temp=False):
