@@ -55,6 +55,7 @@ def unity_reply(plugin_event, Proc):
     skipSpaceStart = OlivaDiceCore.msgReply.skipSpaceStart
     skipToRight = OlivaDiceCore.msgReply.skipToRight
     msgIsCommand = OlivaDiceCore.msgReply.msgIsCommand
+    flag_qqguild_v2 = plugin_event.platform['sdk'] == 'qqGuildv2_link'
 
     tmp_at_str = OlivOS.messageAPI.PARA.at(plugin_event.base_info['self_id']).CQ()  # NOQA: F841
     tmp_id_str = str(plugin_event.base_info['self_id'])
@@ -307,7 +308,10 @@ def unity_reply(plugin_event, Proc):
                     dataPath = OlivaDiceLogger.data.dataPath
                     dataLogPath = OlivaDiceLogger.data.dataLogPath
                     dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
-                    last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
+                    if flag_qqguild_v2:
+                        last_message_id = OlivaDiceLogger.logger.get_last_message_ref_idx(dataLogFile)
+                    else:
+                        last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
 
                 if log_name not in log_name_list:
                     log_name_list.append(log_name)
@@ -562,9 +566,15 @@ def unity_reply(plugin_event, Proc):
                     userConfigKey='logQuote',
                     botHash=plugin_event.bot_info.hash,
                 )
+                if is_continue and flag_qqguild_v2 and not last_message_id and log_quote:
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str_quote_error = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogQuoteError'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str_quote_error)
                 # 如果是继续日志且有最后一个 message_id 并且开启了 log quote，尝试引用回复
                 if is_continue and last_message_id and log_quote:
-                    if plugin_event.platform['platform'] == 'qq':
+                    if plugin_event.platform['platform'] == 'qq' or flag_qqguild_v2:
                         try:
                             # 尝试构造引用回复消息
                             dictTValue['tLogName'] = log_name
@@ -2898,9 +2908,15 @@ def unity_reply(plugin_event, Proc):
                     dataPath = OlivaDiceLogger.data.dataPath
                     dataLogPath = OlivaDiceLogger.data.dataLogPath
                     dataLogFile = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
-                    last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
+                    if flag_qqguild_v2:
+                        last_message_id = OlivaDiceLogger.logger.get_last_message_ref_idx(dataLogFile)
+                    else:
+                        last_message_id = OlivaDiceLogger.logger.get_last_message_id(dataLogFile)
                     dictTValue['tLogName'] = log_name
-                    if last_message_id and plugin_event.platform['platform'] == 'qq':
+                    if last_message_id and (
+                        plugin_event.platform['platform'] == 'qq'
+                        or flag_qqguild_v2
+                    ):
                         try:
                             # 尝试构造引用回复消息
                             tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(

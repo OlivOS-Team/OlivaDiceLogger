@@ -347,6 +347,13 @@ def loggerEntry(event, funcType, sender, dectData, message):
             if not hasattr(event, 'data') or not hasattr(event.data, 'message_id'):
                 return
             message_id = event.data.message_id
+            message_ref_idx = None
+            if event.platform['sdk'] == 'qqGuildv2_link':
+                extend_data = getattr(event.data, 'extend', None)
+                if isinstance(extend_data, dict):
+                    qq_msg_idx = extend_data.get('qq_msg_idx', None)
+                    if qq_msg_idx is not None and str(qq_msg_idx).startswith('REFIDX_'):
+                        message_ref_idx = str(qq_msg_idx)
 
             # 检查是否启用使用角色卡名字功能
             log_use_pc_name = OlivaDiceCore.userConfig.getUserConfigByKey(
@@ -369,6 +376,7 @@ def loggerEntry(event, funcType, sender, dectData, message):
                 'time': int(time.mktime(time.localtime())),
                 'type': funcType,
                 'message_id': message_id,
+                'message_ref_idx': message_ref_idx,
                 'deleted': False,
                 'dect': {
                     'host_id': host_id,
@@ -602,6 +610,24 @@ def get_last_message_id(log_file_path):
         except Exception:
             pass
     return last_message_id
+
+
+def get_last_message_ref_idx(log_file_path):
+    """获取最后一条有效日志的 QQ Guild v2 引用索引。"""
+    last_message_ref_idx = None
+    if os.path.exists(log_file_path):
+        try:
+            with open(log_file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        log_entry = json.loads(line.strip())
+                        if not log_entry.get('deleted', False) and 'message_id' in log_entry:
+                            last_message_ref_idx = log_entry.get('message_ref_idx', None)
+                    except Exception:
+                        continue
+        except Exception:
+            pass
+    return last_message_ref_idx
 
 
 def write_status_to_file(log_uuid, status_data):
