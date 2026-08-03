@@ -65,6 +65,10 @@ def unity_reply(plugin_event, Proc):
         if plugin_event.data.extend['sub_self_id'] is not None:
             tmp_at_str_sub = OlivOS.messageAPI.PARA.at(plugin_event.data.extend['sub_self_id']).CQ()  # NOQA: F841
             tmp_id_str_sub = str(plugin_event.data.extend['sub_self_id'])
+    tmp_id_str_sub_open = None
+    if 'sub_self_open_id' in plugin_event.data.extend:
+        if plugin_event.data.extend['sub_self_open_id'] is not None:
+            tmp_id_str_sub_open = str(plugin_event.data.extend['sub_self_open_id'])
     tmp_command_str_1 = '.'  # NOQA: F841
     tmp_command_str_2 = '。'  # NOQA: F841
     tmp_command_str_3 = '/'  # NOQA: F841
@@ -99,6 +103,8 @@ def unity_reply(plugin_event, Proc):
         if tmp_id_str in tmp_at_list:
             flag_force_reply = True
         if tmp_id_str_sub in tmp_at_list:
+            flag_force_reply = True
+        if tmp_id_str_sub_open in tmp_at_list:
             flag_force_reply = True
         if 'all' in tmp_at_list:
             flag_force_reply = True
