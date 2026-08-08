@@ -31,6 +31,16 @@ from functools import wraps
 gLoggerIOLockMap = {}
 
 
+def safe_text(value):
+    """只转义孤立 Unicode 代理字符，保持正常文本原样写入。"""
+    if not isinstance(value, str):
+        return value
+    try:
+        return value.encode('utf-8', errors='backslashreplace').decode('utf-8')
+    except Exception:
+        return repr(value)
+
+
 def check_and_process_compatibility():
     # 兼容改为创建文件，只做一次，之后不做
     dataPath = OlivaDiceLogger.data.dataPath
@@ -383,8 +393,8 @@ def loggerEntry(event, funcType, sender, dectData, message):
                     'group_id': group_id,
                     'user_id': user_id,
                 },
-                'sender': {'id': tmp_id, 'name': tmp_name},
-                'message': message,
+                'sender': {'id': tmp_id, 'name': safe_text(tmp_name)},
+                'message': safe_text(message),
             }
             log_str = json.dumps(log_dict, ensure_ascii=False)
             log_name_dict = (
