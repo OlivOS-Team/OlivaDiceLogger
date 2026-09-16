@@ -162,6 +162,13 @@ dictHelpDocTemp = {
     别名: .log continue
     在任意群使用，无需身份验证
 
+私聊可用(不依赖当前群会话):
+.log upload [UUID]
+.log build [UUID]
+.log code [UUID] (群号) (平台) (end)
+.log stat [UUID] (all/@用户)
+其余 .log 指令仅群聊可用
+
 日志的默认名称为 default
 日志上传存在失败可能，届时请联系后台管理索取""",
     'OlivaDiceLogger': """[OlivaDiceLogger]
