@@ -184,12 +184,13 @@ def unity_reply(plugin_event, Proc):
         # 此群关闭时中断处理
         if not flag_groupEnable and not flag_force_reply:
             return
-        if isMatchWordStart(tmp_reast_str, 'log', isCommand=True) and flag_is_from_group:
+        if isMatchWordStart(tmp_reast_str, 'log', isCommand=True):
             tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'log')
             tmp_reast_str = skipSpaceStart(tmp_reast_str)
             tmp_reply_str = None
+            flag_log_private_ok = False
             # log stop/code/id 无视锁定状态，直接执行
-            if not isMatchWordStart(tmp_reast_str, ['stop', 'halt', 'code', 'id']):
+            if flag_is_from_group and not isMatchWordStart(tmp_reast_str, ['stop', 'halt', 'code', 'id']):
                 log_ending_lock = OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId=tmp_hagID,
                     userType='group',
@@ -206,6 +207,494 @@ def unity_reply(plugin_event, Proc):
                     replyMsg(plugin_event, tmp_reply_str)
                     return
 
+            if isMatchWordStart(tmp_reast_str, 'upload'):
+                flag_log_private_ok = True
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'upload')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+
+                if not tmp_reast_str.strip():
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogUploadNoName'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_uuid = tmp_reast_str.strip()
+                log_name = None
+
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                log_files = [
+                    f
+                    for f in os.listdir(f'{dataPath}{dataLogPath}')
+                    if f.startswith(f'log_{log_uuid}_') and f.endswith('.trpglog')
+                ]
+
+                if log_files:
+                    # 从文件名中提取log_name
+                    log_name = log_files[0].replace(f'log_{log_uuid}_', '').replace('.trpglog', '')
+
+                if not log_name:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogFileNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                tmp_logName = f'log_{log_uuid}_{log_name}'
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                dataLogFile_1 = f'{dataPath}{dataLogPath}/{tmp_logName}.trpglog'
+
+                # 从olivadicelog文件中读取时长
+                total_duration = 0
+                olivadicelog_file = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                if os.path.exists(olivadicelog_file):
+                    with open(olivadicelog_file, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            try:
+                                record = json.loads(line.strip())
+                                if record.get('type') == 'log_total_duration':
+                                    total_duration = record.get('total_time', 0)
+                                    break
+                            except Exception:
+                                continue
+
+                formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
+                dictTValue['tLogTime'] = formatted_duration
+
+                # 获取上传超时配置
+                upload_timeout_seconds = OlivaDiceCore.console.getConsoleSwitchByHash(
+                    'logUploadTimeout', plugin_event.bot_info.hash
+                )
+
+                try:
+                    OlivaDiceLogger.logger.uploadLogFile(tmp_logName, timeout=upload_timeout_seconds)
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = log_uuid
+                    encoded_logName = urllib.parse.quote(tmp_logName)
+                    dictTValue['tLogUrl'] = f'{OlivaDiceLogger.data.dataLogPainterUrl}{encoded_logName}'
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogUploadSuccess'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                except Exception:
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogUploadFailed'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    traceback.print_exc()
+                return
+            elif isMatchWordStart(tmp_reast_str, ['build', 'gene']):
+                flag_log_private_ok = True
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['build', 'gene'])
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+
+                if not tmp_reast_str.strip():
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogGenerateNoUUID'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                log_uuid = tmp_reast_str.strip()
+                log_name = None
+
+                # 在日志文件夹中搜索包含该 UUID 的 .olivadicelog 文件
+                dataPath = OlivaDiceLogger.data.dataPath
+                dataLogPath = OlivaDiceLogger.data.dataLogPath
+                log_files = glob.glob(f'{dataPath}{dataLogPath}/log_{log_uuid}_*.olivadicelog')
+
+                if log_files:
+                    # 从文件名中提取log_name
+                    filename = os.path.basename(log_files[0])
+                    log_name = filename.replace(f'log_{log_uuid}_', '').replace('.olivadicelog', '')
+
+                if not log_name:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogGenerateNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                tmp_logName = f'log_{log_uuid}_{log_name}'
+
+                # 尝试从olivadicelog文件中读取时长
+                total_duration = 0
+                olivadicelog_file = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
+                if os.path.exists(olivadicelog_file):
+                    try:
+                        with open(olivadicelog_file, 'r', encoding='utf-8') as f:
+                            for line in f:
+                                try:
+                                    record = json.loads(line.strip())
+                                    if record.get('type') == 'log_total_duration':
+                                        total_duration = record.get('total_time', 0)
+                                        break
+                                except Exception:
+                                    continue
+                    except Exception:
+                        pass
+
+                # 强制生成trpglog文件
+                try:
+                    success = OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration)
+                    if success:
+                        dictTValue['tLogName'] = log_name
+                        dictTValue['tLogUUID'] = log_uuid
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogGenerateSuccess'], dictTValue
+                        )
+                    else:
+                        dictTValue['tLogUUID'] = log_uuid
+                        dictTValue['tLogName'] = log_name if log_name else 'N/A'
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogGenerateFailed'], dictTValue
+                        )
+                    replyMsg(plugin_event, tmp_reply_str)
+                except Exception:
+                    dictTValue['tLogUUID'] = log_uuid
+                    dictTValue['tLogName'] = log_name if log_name else 'N/A'
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogGenerateFailed'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    traceback.print_exc()
+                return
+            elif isMatchWordStart(tmp_reast_str, 'stat'):
+                flag_log_private_ok = True
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'stat')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                # 解析参数
+                target_uuid = None
+                target_user_id = None
+                show_all = False
+                tmp_msg = OlivOS.messageAPI.Message_templet('old_string', tmp_reast_str)
+                text_parts = []
+                for item in tmp_msg.data:
+                    if type(item) is OlivOS.messageAPI.PARA.at:
+                        target_user_id = item.data['id']
+                    elif type(item) is OlivOS.messageAPI.PARA.text:
+                        text = item.data['text'].strip()
+                        if text:
+                            text_parts.extend(text.split())
+                if text_parts:
+                    # 从后往前贪婪匹配检查是否有all
+                    if text_parts[-1].lower() == 'all':
+                        show_all = True
+                        text_parts.pop()
+                    # 将剩余文本作为UUID
+                    if text_parts:
+                        target_uuid = text_parts[0]
+                        target_uuid = target_uuid.strip()
+                # 获取日志 UUID
+                log_uuid = None
+                log_name = None
+
+                if target_uuid:
+                    # 使用指定的 UUID
+                    log_uuid = target_uuid
+                    dataPath = OlivaDiceLogger.data.dataPath
+                    dataLogPath = OlivaDiceLogger.data.dataLogPath
+                    log_files = glob.glob(f'{dataPath}{dataLogPath}/log_{log_uuid}_*.olivadicelog')
+                    if log_files:
+                        filename = os.path.basename(log_files[0])
+                        log_name = filename.replace(f'log_{log_uuid}_', '').replace('.olivadicelog', '')
+                elif not flag_is_from_group:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strForGroupOnly'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                else:
+                    # 使用活跃日志
+                    log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId=tmp_hagID,
+                        userType='group',
+                        platform=plugin_event.platform['platform'],
+                        userConfigKey='logActiveName',
+                        botHash=plugin_event.bot_info.hash,
+                    )
+                    if not log_name:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatNotFound'], dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
+
+                    log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId=tmp_hagID,
+                        userType='group',
+                        platform=plugin_event.platform['platform'],
+                        userConfigKey='logNameDict',
+                        botHash=plugin_event.bot_info.hash,
+                    )
+                    if log_name_dict and log_name in log_name_dict:
+                        log_uuid = log_name_dict[log_name]
+
+                if not log_uuid:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogStatNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                # 获取统计数据
+                status_data = OlivaDiceLogger.logger.get_log_status(log_uuid, plugin_event, tmp_hagID)
+                if not status_data:
+                    dictTValue['tLogUUID'] = log_uuid
+                    dictTValue['tLogName'] = log_name
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogStatUUIDNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+
+                dictTValue['tLogUUID'] = log_uuid
+                dictTValue['tLogName'] = log_name
+
+                if show_all:
+                    # 显示所有人的数据
+                    stat_text, total_success, total_fail, users_data = OlivaDiceLogger.logger.format_all_stat_data(
+                        plugin_event, status_data, dictStrCustom
+                    )
+                    if not stat_text:
+                        dictTValue['tStatData'] = '无数据'
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatEmpty'], dictTValue
+                        )
+                    else:
+                        dictTValue['tStatData'] = stat_text
+                        dictTValue['tTotalSuccess'] = str(total_success)
+                        dictTValue['tTotalFail'] = str(total_fail)
+                        if total_success + total_fail > 0:
+                            success_rate = (total_success / (total_success + total_fail)) * 100
+                            dictTValue['tSuccessRate'] = f'{success_rate:.2f}'
+                        else:
+                            dictTValue['tSuccessRate'] = '0.00'
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatAll'], dictTValue
+                        )
+                    replyMsg(plugin_event, tmp_reply_str)
+                elif target_user_id:
+                    # 显示指定用户的数据
+                    user_hash = OlivaDiceCore.userConfig.getUserHash(
+                        target_user_id, 'user', plugin_event.platform['platform']
+                    )
+                    user_data = status_data.get(user_hash)
+                    user_name = OlivaDiceCore.msgReplyModel.get_user_name(plugin_event, target_user_id)
+                    dictTValue['tUserName01'] = user_name
+
+                    if not user_data:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatUserEmpty'], dictTValue
+                        )
+                    else:
+                        stat_text, total_success, total_fail, pc_cards_data = (
+                            OlivaDiceLogger.logger.format_user_stat_data(
+                                user_data, plugin_event.bot_info.hash, dictStrCustom
+                            )
+                        )
+                        if not stat_text:
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogStatUserEmpty'], dictTValue
+                            )
+                        else:
+                            dictTValue['tStatData'] = stat_text
+                            dictTValue['tTotalSuccess'] = str(total_success)
+                            dictTValue['tTotalFail'] = str(total_fail)
+                            if total_success + total_fail > 0:
+                                success_rate = (total_success / (total_success + total_fail)) * 100
+                                dictTValue['tSuccessRate'] = f'{success_rate:.2f}'
+                            else:
+                                dictTValue['tSuccessRate'] = '0.00'
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogStatUser'], dictTValue
+                            )
+                    replyMsg(plugin_event, tmp_reply_str)
+                else:
+                    # 显示自己的数据
+                    user_hash = OlivaDiceCore.userConfig.getUserHash(
+                        plugin_event.data.sender['id'], 'user', plugin_event.platform['platform']
+                    )
+                    user_data = status_data.get(user_hash)
+
+                    if not user_data:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogStatSelfEmpty'], dictTValue
+                        )
+                    else:
+                        stat_text, total_success, total_fail, pc_cards_data = (
+                            OlivaDiceLogger.logger.format_user_stat_data(
+                                user_data, plugin_event.bot_info.hash, dictStrCustom
+                            )
+                        )
+                        if not stat_text:
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogStatSelfEmpty'], dictTValue
+                            )
+                        else:
+                            dictTValue['tStatData'] = stat_text
+                            dictTValue['tTotalSuccess'] = str(total_success)
+                            dictTValue['tTotalFail'] = str(total_fail)
+                            if total_success + total_fail > 0:
+                                success_rate = (total_success / (total_success + total_fail)) * 100
+                                dictTValue['tSuccessRate'] = f'{success_rate:.2f}'
+                            else:
+                                dictTValue['tSuccessRate'] = '0.00'
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogStatSelf'], dictTValue
+                            )
+                    replyMsg(plugin_event, tmp_reply_str)
+                return
+            elif isMatchWordStart(tmp_reast_str, 'code'):
+                flag_log_private_ok = True
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'code')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                # 权限：仅骰主
+                flag_is_from_master = OlivaDiceCore.ordinaryInviteManager.isInMasterList(
+                    plugin_event.bot_info.hash,
+                    OlivaDiceCore.userConfig.getUserHash(
+                        plugin_event.data.user_id, 'user', plugin_event.platform['platform']
+                    ),
+                )
+                if not flag_is_from_master:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strNeedMaster'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 参数：UUID（36位）+ 群号（可选，支持右端接平台名）
+                # 从右往左贪婪匹配：群号后可直接接平台名，无需空格分隔
+                tmp_code_input = tmp_reast_str.strip()
+                if len(tmp_code_input) < 36:
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeNoUUID'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                log_uuid = tmp_code_input[:36]
+                tmp_code_rest = tmp_code_input[36:].strip()
+                # end 后缀：日志已 end，跳过群校验直接基于文件生成续接码
+                flag_log_ended = (tmp_code_rest == 'end')
+                current_group_id = str(plugin_event.data.group_id) if flag_is_from_group else ''
+                if flag_log_ended:
+                    old_group_hash = None
+                    input_group_id = current_group_id
+                    input_platform = plugin_event.platform['platform']
+                elif tmp_code_rest:
+                    # 双向贪婪匹配平台名：先右再左
+                    # 平台名列表按长度降序，长名优先匹配（如 qqGuild 优先于 qq）
+                    platform_list_sorted = sorted(
+                        OlivOS.accountMetadataAPI.accountTypeDataList_platform,
+                        key=len, reverse=True
+                    )
+                    matched_platform = None
+                    # 从右往左
+                    for p in platform_list_sorted:
+                        if tmp_code_rest.endswith(p):
+                            matched_platform = p
+                            matched_group_id = tmp_code_rest[:-len(p)]
+                            break
+                    # 从右未命中则从左往右
+                    if matched_platform is None:
+                        for p in platform_list_sorted:
+                            if tmp_code_rest.startswith(p):
+                                matched_platform = p
+                                matched_group_id = tmp_code_rest[len(p):]
+                                break
+                    if matched_platform:
+                        input_platform = matched_platform
+                        input_group_id = matched_group_id.strip() or current_group_id
+                    else:
+                        input_group_id = tmp_code_rest.strip()
+                        input_platform = plugin_event.platform['platform']
+                else:
+                    input_group_id = current_group_id
+                    input_platform = plugin_event.platform['platform']
+                # 私聊生成续接码必须带群号/平台，或使用 end 跳过群校验
+                if not flag_is_from_group and not flag_log_ended and input_group_id == '':
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeNoUUID'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 校验 UUID 对应的日志文件是否存在
+                log_dir = OlivaDiceLogger.data.dataPath + OlivaDiceLogger.data.dataLogPath
+                log_files = glob.glob(f'{log_dir}/log_{log_uuid}_*.olivadicelog')
+                if not log_files:
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogCodeNotFound'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                # 校验来源群（end 后缀跳过）
+                if not flag_log_ended:
+                    old_group_hash = OlivaDiceCore.userConfig.getUserHash(
+                        input_group_id, 'group', input_platform
+                    )
+                    old_has_uuid = False
+                    tmp_user_config_data = OlivaDiceCore.userConfig.dictUserConfigData
+                    if old_group_hash in tmp_user_config_data:
+                        for tmp_bot_key in tmp_user_config_data[old_group_hash]:
+                            tmp_entry = tmp_user_config_data[old_group_hash][tmp_bot_key]
+                            tmp_name_dict = tmp_entry.get('configNote', {}).get('logNameDict', {})
+                            if log_uuid in tmp_name_dict.values():
+                                old_has_uuid = True
+                                break
+                    if not old_has_uuid:
+                        dictTValue['tLogUUID'] = log_uuid
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogCodeGroupInvalid'], dictTValue
+                        )
+                        replyMsg(plugin_event, tmp_reply_str)
+                        return
+                # 懒加载：清理过期码
+                tmp_ttl = OlivaDiceCore.console.getConsoleSwitchByHash(
+                    'defaultLogContinueCodeTTL', plugin_event.bot_info.hash
+                )
+                if tmp_ttl is None:
+                    tmp_ttl = 86400
+                if tmp_ttl > 0:
+                    tmp_now = time.time()
+                    tmp_expired_keys = [
+                        k for k, v in OlivaDiceLogger.data.dictContinueCode.items()
+                        if tmp_now - v['time'] > tmp_ttl
+                    ]
+                    for k in tmp_expired_keys:
+                        del OlivaDiceLogger.data.dictContinueCode[k]
+                # 生成 6 位续接码（uuid4 hex 取前 6 位，大写）
+                continue_code = uuid.uuid4().hex[:6].upper()
+                # 存入内存（覆盖旧码，同一 UUID 同时只保留一个有效码）
+                OlivaDiceLogger.data.dictContinueCode[log_uuid] = {
+                    'code': continue_code,
+                    'time': time.time(),
+                    'old_group_hash': old_group_hash,
+                }
+                # 提取日志名用于回复
+                log_filename = os.path.basename(log_files[0])
+                log_name_display = log_filename.replace(
+                    f'log_{log_uuid}_', ''
+                ).replace('.olivadicelog', '')
+                dictTValue['tLogUUID'] = log_uuid
+                dictTValue['tLogName'] = log_name_display
+                dictTValue['tContinueCode'] = continue_code
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strLoggerLogCodeSuccess'], dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
+            if not flag_is_from_group and not flag_log_private_ok:
+                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                    dictStrCustom['strForGroupOnly'], dictTValue
+                )
+                replyMsg(plugin_event, tmp_reply_str)
+                return
             if isMatchWordStart(tmp_reast_str, ['on', 'new']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['on', 'new'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
@@ -1616,162 +2105,6 @@ def unity_reply(plugin_event, Proc):
                 )
                 return
 
-            elif isMatchWordStart(tmp_reast_str, 'upload'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'upload')
-                tmp_reast_str = skipSpaceStart(tmp_reast_str)
-
-                if not tmp_reast_str.strip():
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogUploadNoName'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-
-                log_uuid = tmp_reast_str.strip()
-                log_name = None
-
-                dataPath = OlivaDiceLogger.data.dataPath
-                dataLogPath = OlivaDiceLogger.data.dataLogPath
-                log_files = [
-                    f
-                    for f in os.listdir(f'{dataPath}{dataLogPath}')
-                    if f.startswith(f'log_{log_uuid}_') and f.endswith('.trpglog')
-                ]
-
-                if log_files:
-                    # 从文件名中提取log_name
-                    log_name = log_files[0].replace(f'log_{log_uuid}_', '').replace('.trpglog', '')
-
-                if not log_name:
-                    dictTValue['tLogUUID'] = log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogFileNotFound'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-
-                tmp_logName = f'log_{log_uuid}_{log_name}'
-                dataPath = OlivaDiceLogger.data.dataPath
-                dataLogPath = OlivaDiceLogger.data.dataLogPath
-                dataLogFile_1 = f'{dataPath}{dataLogPath}/{tmp_logName}.trpglog'
-
-                # 从olivadicelog文件中读取时长
-                total_duration = 0
-                olivadicelog_file = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
-                if os.path.exists(olivadicelog_file):
-                    with open(olivadicelog_file, 'r', encoding='utf-8') as f:
-                        for line in f:
-                            try:
-                                record = json.loads(line.strip())
-                                if record.get('type') == 'log_total_duration':
-                                    total_duration = record.get('total_time', 0)
-                                    break
-                            except Exception:
-                                continue
-
-                formatted_duration = OlivaDiceLogger.logger.format_duration(int(total_duration))
-                dictTValue['tLogTime'] = formatted_duration
-
-                # 获取上传超时配置
-                upload_timeout_seconds = OlivaDiceCore.console.getConsoleSwitchByHash(
-                    'logUploadTimeout', plugin_event.bot_info.hash
-                )
-
-                try:
-                    OlivaDiceLogger.logger.uploadLogFile(tmp_logName, timeout=upload_timeout_seconds)
-                    dictTValue['tLogName'] = log_name
-                    dictTValue['tLogUUID'] = log_uuid
-                    encoded_logName = urllib.parse.quote(tmp_logName)
-                    dictTValue['tLogUrl'] = f'{OlivaDiceLogger.data.dataLogPainterUrl}{encoded_logName}'
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogUploadSuccess'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                except Exception:
-                    dictTValue['tLogName'] = log_name
-                    dictTValue['tLogUUID'] = log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogUploadFailed'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    traceback.print_exc()
-                return
-            elif isMatchWordStart(tmp_reast_str, ['build', 'gene']):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['build', 'gene'])
-                tmp_reast_str = skipSpaceStart(tmp_reast_str)
-
-                if not tmp_reast_str.strip():
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogGenerateNoUUID'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-
-                log_uuid = tmp_reast_str.strip()
-                log_name = None
-
-                # 在日志文件夹中搜索包含该 UUID 的 .olivadicelog 文件
-                dataPath = OlivaDiceLogger.data.dataPath
-                dataLogPath = OlivaDiceLogger.data.dataLogPath
-                log_files = glob.glob(f'{dataPath}{dataLogPath}/log_{log_uuid}_*.olivadicelog')
-
-                if log_files:
-                    # 从文件名中提取log_name
-                    filename = os.path.basename(log_files[0])
-                    log_name = filename.replace(f'log_{log_uuid}_', '').replace('.olivadicelog', '')
-
-                if not log_name:
-                    dictTValue['tLogUUID'] = log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogGenerateNotFound'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-
-                tmp_logName = f'log_{log_uuid}_{log_name}'
-
-                # 尝试从olivadicelog文件中读取时长
-                total_duration = 0
-                olivadicelog_file = f'{dataPath}{dataLogPath}/{tmp_logName}.olivadicelog'
-                if os.path.exists(olivadicelog_file):
-                    try:
-                        with open(olivadicelog_file, 'r', encoding='utf-8') as f:
-                            for line in f:
-                                try:
-                                    record = json.loads(line.strip())
-                                    if record.get('type') == 'log_total_duration':
-                                        total_duration = record.get('total_time', 0)
-                                        break
-                                except Exception:
-                                    continue
-                    except Exception:
-                        pass
-
-                # 强制生成trpglog文件
-                try:
-                    success = OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration)
-                    if success:
-                        dictTValue['tLogName'] = log_name
-                        dictTValue['tLogUUID'] = log_uuid
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogGenerateSuccess'], dictTValue
-                        )
-                    else:
-                        dictTValue['tLogUUID'] = log_uuid
-                        dictTValue['tLogName'] = log_name if log_name else 'N/A'
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogGenerateFailed'], dictTValue
-                        )
-                    replyMsg(plugin_event, tmp_reply_str)
-                except Exception:
-                    dictTValue['tLogUUID'] = log_uuid
-                    dictTValue['tLogName'] = log_name if log_name else 'N/A'
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogGenerateFailed'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    traceback.print_exc()
-                return
             elif isMatchWordStart(tmp_reast_str, ['temp', 'get', 'tmp']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['temp', 'get', 'tmp'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
@@ -2247,314 +2580,6 @@ def unity_reply(plugin_event, Proc):
                             dictStrCustom['strLoggerLogNotFound'], dictTValue
                         )
                         replyMsg(plugin_event, tmp_reply_str)
-                return
-            elif isMatchWordStart(tmp_reast_str, 'stat'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'stat')
-                tmp_reast_str = skipSpaceStart(tmp_reast_str)
-                # 解析参数
-                target_uuid = None
-                target_user_id = None
-                show_all = False
-                tmp_msg = OlivOS.messageAPI.Message_templet('old_string', tmp_reast_str)
-                text_parts = []
-                for item in tmp_msg.data:
-                    if type(item) is OlivOS.messageAPI.PARA.at:
-                        target_user_id = item.data['id']
-                    elif type(item) is OlivOS.messageAPI.PARA.text:
-                        text = item.data['text'].strip()
-                        if text:
-                            text_parts.extend(text.split())
-                if text_parts:
-                    # 从后往前贪婪匹配检查是否有all
-                    if text_parts[-1].lower() == 'all':
-                        show_all = True
-                        text_parts.pop()
-                    # 将剩余文本作为UUID
-                    if text_parts:
-                        target_uuid = text_parts[0]
-                        target_uuid = target_uuid.strip()
-                # 获取日志 UUID
-                log_uuid = None
-                log_name = None
-
-                if target_uuid:
-                    # 使用指定的 UUID
-                    log_uuid = target_uuid
-                    dataPath = OlivaDiceLogger.data.dataPath
-                    dataLogPath = OlivaDiceLogger.data.dataLogPath
-                    log_files = glob.glob(f'{dataPath}{dataLogPath}/log_{log_uuid}_*.olivadicelog')
-                    if log_files:
-                        filename = os.path.basename(log_files[0])
-                        log_name = filename.replace(f'log_{log_uuid}_', '').replace('.olivadicelog', '')
-                else:
-                    # 使用活跃日志
-                    log_name = OlivaDiceCore.userConfig.getUserConfigByKey(
-                        userId=tmp_hagID,
-                        userType='group',
-                        platform=plugin_event.platform['platform'],
-                        userConfigKey='logActiveName',
-                        botHash=plugin_event.bot_info.hash,
-                    )
-                    if not log_name:
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogStatNotFound'], dictTValue
-                        )
-                        replyMsg(plugin_event, tmp_reply_str)
-                        return
-
-                    log_name_dict = OlivaDiceCore.userConfig.getUserConfigByKey(
-                        userId=tmp_hagID,
-                        userType='group',
-                        platform=plugin_event.platform['platform'],
-                        userConfigKey='logNameDict',
-                        botHash=plugin_event.bot_info.hash,
-                    )
-                    if log_name_dict and log_name in log_name_dict:
-                        log_uuid = log_name_dict[log_name]
-
-                if not log_uuid:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogStatNotFound'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-
-                # 获取统计数据
-                status_data = OlivaDiceLogger.logger.get_log_status(log_uuid, plugin_event, tmp_hagID)
-                if not status_data:
-                    dictTValue['tLogUUID'] = log_uuid
-                    dictTValue['tLogName'] = log_name
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogStatUUIDNotFound'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-
-                dictTValue['tLogUUID'] = log_uuid
-                dictTValue['tLogName'] = log_name
-
-                if show_all:
-                    # 显示所有人的数据
-                    stat_text, total_success, total_fail, users_data = OlivaDiceLogger.logger.format_all_stat_data(
-                        plugin_event, status_data, dictStrCustom
-                    )
-                    if not stat_text:
-                        dictTValue['tStatData'] = '无数据'
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogStatEmpty'], dictTValue
-                        )
-                    else:
-                        dictTValue['tStatData'] = stat_text
-                        dictTValue['tTotalSuccess'] = str(total_success)
-                        dictTValue['tTotalFail'] = str(total_fail)
-                        if total_success + total_fail > 0:
-                            success_rate = (total_success / (total_success + total_fail)) * 100
-                            dictTValue['tSuccessRate'] = f'{success_rate:.2f}'
-                        else:
-                            dictTValue['tSuccessRate'] = '0.00'
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogStatAll'], dictTValue
-                        )
-                    replyMsg(plugin_event, tmp_reply_str)
-                elif target_user_id:
-                    # 显示指定用户的数据
-                    user_hash = OlivaDiceCore.userConfig.getUserHash(
-                        target_user_id, 'user', plugin_event.platform['platform']
-                    )
-                    user_data = status_data.get(user_hash)
-                    user_name = OlivaDiceCore.msgReplyModel.get_user_name(plugin_event, target_user_id)
-                    dictTValue['tUserName01'] = user_name
-
-                    if not user_data:
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogStatUserEmpty'], dictTValue
-                        )
-                    else:
-                        stat_text, total_success, total_fail, pc_cards_data = (
-                            OlivaDiceLogger.logger.format_user_stat_data(
-                                user_data, plugin_event.bot_info.hash, dictStrCustom
-                            )
-                        )
-                        if not stat_text:
-                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                                dictStrCustom['strLoggerLogStatUserEmpty'], dictTValue
-                            )
-                        else:
-                            dictTValue['tStatData'] = stat_text
-                            dictTValue['tTotalSuccess'] = str(total_success)
-                            dictTValue['tTotalFail'] = str(total_fail)
-                            if total_success + total_fail > 0:
-                                success_rate = (total_success / (total_success + total_fail)) * 100
-                                dictTValue['tSuccessRate'] = f'{success_rate:.2f}'
-                            else:
-                                dictTValue['tSuccessRate'] = '0.00'
-                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                                dictStrCustom['strLoggerLogStatUser'], dictTValue
-                            )
-                    replyMsg(plugin_event, tmp_reply_str)
-                else:
-                    # 显示自己的数据
-                    user_hash = OlivaDiceCore.userConfig.getUserHash(
-                        plugin_event.data.sender['id'], 'user', plugin_event.platform['platform']
-                    )
-                    user_data = status_data.get(user_hash)
-
-                    if not user_data:
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogStatSelfEmpty'], dictTValue
-                        )
-                    else:
-                        stat_text, total_success, total_fail, pc_cards_data = (
-                            OlivaDiceLogger.logger.format_user_stat_data(
-                                user_data, plugin_event.bot_info.hash, dictStrCustom
-                            )
-                        )
-                        if not stat_text:
-                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                                dictStrCustom['strLoggerLogStatSelfEmpty'], dictTValue
-                            )
-                        else:
-                            dictTValue['tStatData'] = stat_text
-                            dictTValue['tTotalSuccess'] = str(total_success)
-                            dictTValue['tTotalFail'] = str(total_fail)
-                            if total_success + total_fail > 0:
-                                success_rate = (total_success / (total_success + total_fail)) * 100
-                                dictTValue['tSuccessRate'] = f'{success_rate:.2f}'
-                            else:
-                                dictTValue['tSuccessRate'] = '0.00'
-                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                                dictStrCustom['strLoggerLogStatSelf'], dictTValue
-                            )
-                    replyMsg(plugin_event, tmp_reply_str)
-                return
-            elif isMatchWordStart(tmp_reast_str, 'code'):
-                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'code')
-                tmp_reast_str = skipSpaceStart(tmp_reast_str)
-                # 权限：仅骰主
-                flag_is_from_master = OlivaDiceCore.ordinaryInviteManager.isInMasterList(
-                    plugin_event.bot_info.hash,
-                    OlivaDiceCore.userConfig.getUserHash(
-                        plugin_event.data.user_id, 'user', plugin_event.platform['platform']
-                    ),
-                )
-                if not flag_is_from_master:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strNeedMaster'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-                # 参数：UUID（36位）+ 群号（可选，支持右端接平台名）
-                # 从右往左贪婪匹配：群号后可直接接平台名，无需空格分隔
-                tmp_code_input = tmp_reast_str.strip()
-                if len(tmp_code_input) < 36:
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogCodeNoUUID'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-                log_uuid = tmp_code_input[:36]
-                tmp_code_rest = tmp_code_input[36:].strip()
-                # end 后缀：日志已 end，跳过群校验直接基于文件生成续接码
-                flag_log_ended = (tmp_code_rest == 'end')
-                if flag_log_ended:
-                    old_group_hash = None
-                    input_group_id = str(plugin_event.data.group_id)
-                    input_platform = plugin_event.platform['platform']
-                elif tmp_code_rest:
-                    # 双向贪婪匹配平台名：先右再左
-                    # 平台名列表按长度降序，长名优先匹配（如 qqGuild 优先于 qq）
-                    platform_list_sorted = sorted(
-                        OlivOS.accountMetadataAPI.accountTypeDataList_platform,
-                        key=len, reverse=True
-                    )
-                    matched_platform = None
-                    # 从右往左
-                    for p in platform_list_sorted:
-                        if tmp_code_rest.endswith(p):
-                            matched_platform = p
-                            matched_group_id = tmp_code_rest[:-len(p)]
-                            break
-                    # 从右未命中则从左往右
-                    if matched_platform is None:
-                        for p in platform_list_sorted:
-                            if tmp_code_rest.startswith(p):
-                                matched_platform = p
-                                matched_group_id = tmp_code_rest[len(p):]
-                                break
-                    if matched_platform:
-                        input_platform = matched_platform
-                        input_group_id = matched_group_id.strip() or str(plugin_event.data.group_id)
-                    else:
-                        input_group_id = tmp_code_rest.strip()
-                        input_platform = plugin_event.platform['platform']
-                else:
-                    input_group_id = str(plugin_event.data.group_id)
-                    input_platform = plugin_event.platform['platform']
-                # 校验 UUID 对应的日志文件是否存在
-                log_dir = OlivaDiceLogger.data.dataPath + OlivaDiceLogger.data.dataLogPath
-                log_files = glob.glob(f'{log_dir}/log_{log_uuid}_*.olivadicelog')
-                if not log_files:
-                    dictTValue['tLogUUID'] = log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogCodeNotFound'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    return
-                # 校验来源群（end 后缀跳过）
-                if not flag_log_ended:
-                    old_group_hash = OlivaDiceCore.userConfig.getUserHash(
-                        input_group_id, 'group', input_platform
-                    )
-                    old_has_uuid = False
-                    tmp_user_config_data = OlivaDiceCore.userConfig.dictUserConfigData
-                    if old_group_hash in tmp_user_config_data:
-                        for tmp_bot_key in tmp_user_config_data[old_group_hash]:
-                            tmp_entry = tmp_user_config_data[old_group_hash][tmp_bot_key]
-                            tmp_name_dict = tmp_entry.get('configNote', {}).get('logNameDict', {})
-                            if log_uuid in tmp_name_dict.values():
-                                old_has_uuid = True
-                                break
-                    if not old_has_uuid:
-                        dictTValue['tLogUUID'] = log_uuid
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogCodeGroupInvalid'], dictTValue
-                        )
-                        replyMsg(plugin_event, tmp_reply_str)
-                        return
-                # 懒加载：清理过期码
-                tmp_ttl = OlivaDiceCore.console.getConsoleSwitchByHash(
-                    'defaultLogContinueCodeTTL', plugin_event.bot_info.hash
-                )
-                if tmp_ttl is None:
-                    tmp_ttl = 86400
-                if tmp_ttl > 0:
-                    tmp_now = time.time()
-                    tmp_expired_keys = [
-                        k for k, v in OlivaDiceLogger.data.dictContinueCode.items()
-                        if tmp_now - v['time'] > tmp_ttl
-                    ]
-                    for k in tmp_expired_keys:
-                        del OlivaDiceLogger.data.dictContinueCode[k]
-                # 生成 6 位续接码（uuid4 hex 取前 6 位，大写）
-                continue_code = uuid.uuid4().hex[:6].upper()
-                # 存入内存（覆盖旧码，同一 UUID 同时只保留一个有效码）
-                OlivaDiceLogger.data.dictContinueCode[log_uuid] = {
-                    'code': continue_code,
-                    'time': time.time(),
-                    'old_group_hash': old_group_hash,
-                }
-                # 提取日志名用于回复
-                log_filename = os.path.basename(log_files[0])
-                log_name_display = log_filename.replace(
-                    f'log_{log_uuid}_', ''
-                ).replace('.olivadicelog', '')
-                dictTValue['tLogUUID'] = log_uuid
-                dictTValue['tLogName'] = log_name_display
-                dictTValue['tContinueCode'] = continue_code
-                tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                    dictStrCustom['strLoggerLogCodeSuccess'], dictTValue
-                )
-                replyMsg(plugin_event, tmp_reply_str)
                 return
             elif isMatchWordStart(tmp_reast_str, ['continue', 'resume']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['continue', 'resume'])
