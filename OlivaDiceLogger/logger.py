@@ -332,11 +332,16 @@ def extract_forward_id_list(tmp_message):
     return re.findall(r'\[CQ:forward,id=([^\[\]\s]+)\]', tmp_message)
 
 
-def remove_forward_code(tmp_message):
-    """移除消息中的合并转发CQ码, 返回剩余文本"""
+def remove_forward_code(tmp_message, keep_forward_id_list=None):
+    """移除消息中的合并转发CQ码, keep_forward_id_list中的转发码保留(用于兜底未解码的转发)"""
     if not isinstance(tmp_message, str):
         return str(tmp_message)
-    return re.sub(r'\[CQ:forward,id=[^\[\]\s]+\]', '', tmp_message)
+    tmp_keep_set = set(keep_forward_id_list) if keep_forward_id_list else set()
+    return re.sub(
+        r'\[CQ:forward,id=([^\[\]\s]+)\]',
+        lambda tmp_match: tmp_match.group(0) if tmp_match.group(1) in tmp_keep_set else '',
+        tmp_message,
+    )
 
 
 def format_forward_segment(tmp_seg):
@@ -450,14 +455,10 @@ def decode_forward_nodes(tmp_node_list):
 
 
 def count_forward_nodes(tmp_node_list):
-    """统计合并转发节点列表中可解析的节点总数, 用于判断是否存在解码失败的节点"""
+    """统计合并转发节点列表中返回的节点总数(含无法解码的条目), 用于判断是否存在解码失败的节点"""
     if not isinstance(tmp_node_list, list):
         return 0
-    tmp_count = 0
-    for tmp_node in tmp_node_list:
-        if isinstance(tmp_node, dict):
-            tmp_count += 1
-    return tmp_count
+    return len(tmp_node_list)
 
 
 def write_log_entry(data_log_file, log_dict):
@@ -572,18 +573,21 @@ def loggerEntry(event, funcType, sender, dectData, message):
                 )
                 if log_forward:
                     tmp_entry_list = []
-                    tmp_node_total = 0
+                    tmp_failed_forward_list = []
                     for tmp_forward_id in extract_forward_id_list(message):
                         tmp_node_list = get_forward_node_list(event, tmp_forward_id)
-                        tmp_node_total += count_forward_nodes(tmp_node_list)
-                        tmp_entry_list.extend(decode_forward_nodes(tmp_node_list))
+                        tmp_entry_list_this = decode_forward_nodes(tmp_node_list)
+                        # 拉取失败或存在未解码节点时, 该转发保留原始CQ码兜底
+                        if (
+                            len(tmp_entry_list_this) == 0
+                            or len(tmp_entry_list_this) < count_forward_nodes(tmp_node_list)
+                        ):
+                            tmp_failed_forward_list.append(tmp_forward_id)
+                        tmp_entry_list.extend(tmp_entry_list_this)
                     if len(tmp_entry_list) > 0:
                         tmp_log_dict_list = []
-                        # 存在解码失败的节点时保留原始记录兜底, 否则只保留非转发的剩余文本
-                        if len(tmp_entry_list) < tmp_node_total:
-                            tmp_fallback_message = message
-                        else:
-                            tmp_fallback_message = remove_forward_code(message)
+                        # 仅保留非转发文本与未解码转发的原始CQ码, 避免内容静默丢失
+                        tmp_fallback_message = remove_forward_code(message, tmp_failed_forward_list)
                         tmp_fallback_message = tmp_fallback_message.strip()
                         if tmp_fallback_message != '':
                             tmp_log_dict_list.append(
