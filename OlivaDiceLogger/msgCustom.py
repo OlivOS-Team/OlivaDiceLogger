@@ -17,6 +17,7 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 dictConsoleSwitchTemplate = {
     'default': {
         'defaultLogQuote': 0,
+        'defaultLogForward': 0,
         'defaultLogUsePcName': 0,
         'defaultLogUploadTimeout': 60,
         'defaultLogContinueCodeTTL': 86400,
@@ -25,6 +26,7 @@ dictConsoleSwitchTemplate = {
 
 dictConfigKeyToConsoleSwitchMapping = {
     'logQuote': 'defaultLogQuote',
+    'logForward': 'defaultLogForward',
     'logUsePcName': 'defaultLogUsePcName',
     'logUploadTimeout': 'defaultLogUploadTimeout',
 }
@@ -80,6 +82,11 @@ dictStrCustom = {
     'strLoggerLogUsePcNameAlreadyOn': '本群日志使用角色卡名字功能已处于开启状态',
     'strLoggerLogUsePcNameOff': '本群已关闭日志使用角色卡名字功能',
     'strLoggerLogUsePcNameAlreadyOff': '本群日志使用角色卡名字功能已处于关闭状态',
+    'strLoggerLogForwardHelp': '用法: .log forward on/off\n开启后记录日志时将自动把合并转发消息转成正常的消息记录',
+    'strLoggerLogForwardOn': '本群已开启日志合并转发转写功能',
+    'strLoggerLogForwardAlreadyOn': '本群日志合并转发转写功能已处于开启状态',
+    'strLoggerLogForwardOff': '本群已关闭日志合并转发转写功能',
+    'strLoggerLogForwardAlreadyOff': '本群日志合并转发转写功能已处于关闭状态',
     'strLoggerLogStatNotFound': '未找到活跃日志',
     'strLoggerLogStatUUIDNotFound': '未找到UUID为[{tLogUUID}]的日志数据，或日志中没有任何统计数据',
     'strLoggerLogStatSelf': '日志 [{tLogName}] (UUID: {tLogUUID}) 的统计数据:\n\n[{tUserName}]的数据:\n{tStatData}\n\n总成功次数: {tTotalSuccess}\n总失败次数: {tTotalFail}\n成功率: {tSuccessRate}%',
@@ -149,6 +156,9 @@ dictHelpDocTemp = {
 .log quote (名字) 引用日志
     若平台不为QQ则无法引用
 .log quote on/off 开启/关闭自动引用上次日志
+.log forward on/off 开启/关闭合并转发转写
+    开启后日志记录时将把合并转发消息
+    转成正常的消息记录写入日志
 .log pcname on/off 开启/关闭日志使用角色卡名字
     开启后日志记录时将使用发送者的角色卡名字
 .log stat (UUID) (all/@用户) 查看日志统计数据

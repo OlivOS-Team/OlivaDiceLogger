@@ -325,6 +325,136 @@ def check_log_file_exists(log_name):
     return os.path.exists(olivadicelog_file) and os.path.exists(trpglog_file)
 
 
+def extract_forward_id_list(tmp_message):
+    """从old_string消息文本中提取合并转发消息ID列表"""
+    if not isinstance(tmp_message, str):
+        return []
+    return re.findall(r'\[CQ:forward,id=([^\[\]\s]+)\]', tmp_message)
+
+
+def format_forward_segment(tmp_seg):
+    """把单个消息段(dict或str)转为old_string(CQ码)文本"""
+    if isinstance(tmp_seg, str):
+        return tmp_seg
+    if not isinstance(tmp_seg, dict):
+        return str(tmp_seg)
+    tmp_type = tmp_seg.get('type')
+    tmp_data = tmp_seg.get('data')
+    if not isinstance(tmp_data, dict):
+        tmp_data = tmp_seg
+    if tmp_type == 'text' or (tmp_type is None and 'text' in tmp_data):
+        return str(tmp_data.get('text', ''))
+    if tmp_type == 'at':
+        return '[CQ:at,qq=%s]' % tmp_data.get('qq', tmp_data.get('id', 'all'))
+    if tmp_type == 'face':
+        return '[CQ:face,id=%s]' % tmp_data.get('id', '0')
+    if tmp_type in ['image']:
+        return '[CQ:image,file=%s]' % tmp_data.get('file', tmp_data.get('file_id', tmp_data.get('uri', '')))
+    if tmp_type in ['record', 'voice', 'audio']:
+        return '[CQ:record,file=%s]' % tmp_data.get('file', tmp_data.get('file_id', tmp_data.get('uri', '')))
+    if tmp_type == 'video':
+        return '[CQ:video,file=%s]' % tmp_data.get('file', tmp_data.get('file_id', tmp_data.get('uri', '')))
+    if tmp_type == 'reply':
+        return '[CQ:reply,id=%s]' % tmp_data.get('id', '')
+    if tmp_type == 'forward':
+        return '[CQ:forward,id=%s]' % tmp_data.get('id', tmp_data.get('forward_id', ''))
+    if tmp_type == 'json':
+        return '[CQ:json,data=%s]' % tmp_data.get('data', '')
+    if tmp_type == 'xml':
+        return '[CQ:xml,data=%s]' % tmp_data.get('data', '')
+    if tmp_type is None:
+        return str(tmp_data)
+    return '[CQ:%s]' % tmp_type
+
+
+def format_forward_content(tmp_content):
+    """把合并转发节点的content(str/list/其他)统一转为old_string文本"""
+    if isinstance(tmp_content, str):
+        return tmp_content
+    if isinstance(tmp_content, list):
+        return ''.join([format_forward_segment(x) for x in tmp_content if x is not None])
+    return str(tmp_content)
+
+
+def get_forward_node_list(plugin_event, forward_id):
+    """通过平台接口拉取合并转发节点列表，失败时返回None"""
+    tmp_res = None
+    try:
+        tmp_res = plugin_event.get_forward_msg(forward_id)
+    except Exception:
+        return None
+    if not isinstance(tmp_res, dict):
+        return None
+    if not tmp_res.get('active', False):
+        return None
+    tmp_messages = tmp_res.get('data', {}).get('messages', None)
+    if isinstance(tmp_messages, list) and len(tmp_messages) > 0:
+        return tmp_messages
+    return None
+
+
+def get_forward_node_field(tmp_data, key_list):
+    """按优先级从节点数据中取第一个非空字段"""
+    for key_this in key_list:
+        if key_this in tmp_data and tmp_data[key_this] is not None:
+            return tmp_data[key_this]
+    return None
+
+
+def decode_forward_nodes(tmp_node_list):
+    """把各协议端形态不一的合并转发节点列表统一解析为
+    [{'user_id':..., 'name':..., 'message':..., 'time':...}]，无法解析的节点跳过"""
+    tmp_res = []
+    if not isinstance(tmp_node_list, list):
+        return tmp_res
+    for tmp_node in tmp_node_list:
+        try:
+            if not isinstance(tmp_node, dict):
+                continue
+            tmp_node_data = tmp_node.get('data')
+            if not isinstance(tmp_node_data, dict):
+                tmp_node_data = tmp_node
+            tmp_user_id = get_forward_node_field(tmp_node_data, ['user_id', 'uin', 'uid', 'id'])
+            tmp_name = get_forward_node_field(tmp_node_data, ['nickname', 'name', 'sender_name', 'user_name'])
+            tmp_content = get_forward_node_field(tmp_node_data, ['content', 'message', 'text', 'segments', 'msg'])
+            tmp_time = get_forward_node_field(tmp_node_data, ['time'])
+            if tmp_content is None:
+                continue
+            tmp_message = format_forward_content(tmp_content)
+            if str(tmp_message).strip() == '':
+                continue
+            if tmp_user_id is None:
+                tmp_user_id = -1
+            if tmp_name is None:
+                tmp_name = 'N/A'
+            if not isinstance(tmp_time, int):
+                tmp_time = None
+            tmp_res.append(
+                {
+                    'user_id': tmp_user_id,
+                    'name': safe_text(str(tmp_name)),
+                    'message': safe_text(str(tmp_message)),
+                    'time': tmp_time,
+                }
+            )
+        except Exception:
+            continue
+    return tmp_res
+
+
+def write_log_entry(data_log_file, log_dict):
+    """线程安全地追加一条日志记录"""
+    if data_log_file not in gLoggerIOLockMap:
+        gLoggerIOLockMap[data_log_file] = threading.Lock()
+    loggerIOLock = gLoggerIOLockMap[data_log_file]
+    loggerIOLock.acquire()
+    try:
+        with open(data_log_file, 'a+', encoding='utf-8') as dataLogFile_f:
+            dataLogFile_f.write('%s\n' % json.dumps(log_dict, ensure_ascii=False))
+    finally:
+        loggerIOLock.release()
+
+
 def loggerEntry(event, funcType, sender, dectData, message):
     [host_id, group_id, user_id] = dectData
     tmp_hagID = None
@@ -396,7 +526,6 @@ def loggerEntry(event, funcType, sender, dectData, message):
                 'sender': {'id': tmp_id, 'name': safe_text(tmp_name)},
                 'message': safe_text(message),
             }
-            log_str = json.dumps(log_dict, ensure_ascii=False)
             log_name_dict = (
                 OlivaDiceCore.userConfig.getUserConfigByKey(
                     userId=tmp_hagID,
@@ -412,13 +541,49 @@ def loggerEntry(event, funcType, sender, dectData, message):
             dataPath = OlivaDiceLogger.data.dataPath
             dataLogPath = OlivaDiceLogger.data.dataLogPath
             dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, tmp_logName)
-            if dataLogFile not in gLoggerIOLockMap:
-                gLoggerIOLockMap[dataLogFile] = threading.Lock()
-            loggerIOLock = gLoggerIOLockMap[dataLogFile]
-            loggerIOLock.acquire()
-            with open(dataLogFile, 'a+', encoding='utf-8') as dataLogFile_f:
-                dataLogFile_f.write('%s\n' % log_str)
-            loggerIOLock.release()
+
+            # 合并转发转写: 群开启logForward开关时, 把合并转发记录转成正常的人物和消息写入
+            tmp_log_dict_list = [log_dict]
+            if funcType == 'recv' and len(extract_forward_id_list(message)) > 0:
+                log_forward = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=event.platform['platform'],
+                    userConfigKey='logForward',
+                    botHash=event.bot_info.hash,
+                )
+                if log_forward:
+                    tmp_entry_list = []
+                    for tmp_forward_id in extract_forward_id_list(message):
+                        tmp_node_list = get_forward_node_list(event, tmp_forward_id)
+                        tmp_entry_list.extend(decode_forward_nodes(tmp_node_list))
+                    if len(tmp_entry_list) > 0:
+                        tmp_log_dict_list = []
+                        for tmp_entry in tmp_entry_list:
+                            tmp_entry_time = tmp_entry['time']
+                            if tmp_entry_time is None:
+                                tmp_entry_time = int(time.mktime(time.localtime()))
+                            tmp_log_dict_list.append(
+                                {
+                                    'time': tmp_entry_time,
+                                    'type': 'recv',
+                                    'message_id': None,
+                                    'message_ref_idx': None,
+                                    'deleted': False,
+                                    'dect': {
+                                        'host_id': host_id,
+                                        'group_id': group_id,
+                                        'user_id': tmp_entry['user_id'],
+                                    },
+                                    'sender': {
+                                        'id': tmp_entry['user_id'],
+                                        'name': tmp_entry['name'],
+                                    },
+                                    'message': tmp_entry['message'],
+                                }
+                            )
+            for tmp_log_dict_this in tmp_log_dict_list:
+                write_log_entry(dataLogFile, tmp_log_dict_this)
     pass
 
 
