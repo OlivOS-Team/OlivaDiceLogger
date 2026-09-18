@@ -2964,6 +2964,75 @@ def unity_reply(plugin_event, Proc):
                         dictStrCustom['strLoggerLogQuoteError'], dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
+            elif isMatchWordStart(tmp_reast_str, 'forward'):
+                tmp_reast_str = getMatchWordStartRight(tmp_reast_str, 'forward')
+                tmp_reast_str = skipSpaceStart(tmp_reast_str)
+                tmp_pc_platform = plugin_event.platform['platform']
+                # 处理 log forward on/off 命令
+                log_forward_enabled = OlivaDiceCore.userConfig.getUserConfigByKey(
+                    userId=tmp_hagID,
+                    userType='group',
+                    platform=tmp_pc_platform,
+                    userConfigKey='logForward',
+                    botHash=plugin_event.bot_info.hash,
+                )
+                if isMatchWordStart(tmp_reast_str, 'on', fullMatch=True):
+                    # log forward on 命令
+                    if log_forward_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogForwardAlreadyOn'], dictTValue
+                        )
+                    else:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey='logForward',
+                            userConfigValue=True,
+                            botHash=plugin_event.bot_info.hash,
+                            userId=tmp_hagID,
+                            userType='group',
+                            platform=tmp_pc_platform,
+                        )
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash=OlivaDiceCore.userConfig.getUserHash(
+                                userId=tmp_hagID, userType='group', platform=tmp_pc_platform
+                            )
+                        )
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogForwardOn'], dictTValue
+                        )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                elif isMatchWordStart(tmp_reast_str, 'off', fullMatch=True):
+                    # log forward off 命令
+                    if not log_forward_enabled:
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogForwardAlreadyOff'], dictTValue
+                        )
+                    else:
+                        OlivaDiceCore.userConfig.setUserConfigByKey(
+                            userConfigKey='logForward',
+                            userConfigValue=False,
+                            botHash=plugin_event.bot_info.hash,
+                            userId=tmp_hagID,
+                            userType='group',
+                            platform=tmp_pc_platform,
+                        )
+                        OlivaDiceCore.userConfig.writeUserConfigByUserHash(
+                            userHash=OlivaDiceCore.userConfig.getUserHash(
+                                userId=tmp_hagID, userType='group', platform=tmp_pc_platform
+                            )
+                        )
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogForwardOff'], dictTValue
+                        )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
+                else:
+                    # 如果没有提供on/off参数，提示用法
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogForwardHelp'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                    return
             elif isMatchWordStart(tmp_reast_str, ['pcname']):
                 tmp_reast_str = getMatchWordStartRight(tmp_reast_str, ['pcname'])
                 tmp_reast_str = skipSpaceStart(tmp_reast_str)
