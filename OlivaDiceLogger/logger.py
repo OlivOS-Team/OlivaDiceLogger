@@ -332,6 +332,18 @@ def extract_forward_id_list(tmp_message):
     return re.findall(r'\[CQ:forward,id=([^\[\]\s]+)\]', tmp_message)
 
 
+def remove_forward_code(tmp_message, keep_forward_id_list=None):
+    """移除消息中的合并转发CQ码, keep_forward_id_list中的转发码保留(用于兜底未解码的转发)"""
+    if not isinstance(tmp_message, str):
+        return str(tmp_message)
+    tmp_keep_set = set(keep_forward_id_list) if keep_forward_id_list else set()
+    return re.sub(
+        r'\[CQ:forward,id=([^\[\]\s]+)\]',
+        lambda tmp_match: tmp_match.group(0) if tmp_match.group(1) in tmp_keep_set else '',
+        tmp_message,
+    )
+
+
 def format_forward_segment(tmp_seg):
     """把单个消息段(dict或str)转为old_string(CQ码)文本"""
     if isinstance(tmp_seg, str):
@@ -440,6 +452,13 @@ def decode_forward_nodes(tmp_node_list):
         except Exception:
             continue
     return tmp_res
+
+
+def count_forward_nodes(tmp_node_list):
+    """统计合并转发节点列表中返回的节点总数(含无法解码的条目), 用于判断是否存在解码失败的节点"""
+    if not isinstance(tmp_node_list, list):
+        return 0
+    return len(tmp_node_list)
 
 
 def write_log_entry(data_log_file, log_dict):
@@ -554,11 +573,35 @@ def loggerEntry(event, funcType, sender, dectData, message):
                 )
                 if log_forward:
                     tmp_entry_list = []
+                    tmp_failed_forward_list = []
                     for tmp_forward_id in extract_forward_id_list(message):
                         tmp_node_list = get_forward_node_list(event, tmp_forward_id)
-                        tmp_entry_list.extend(decode_forward_nodes(tmp_node_list))
+                        tmp_entry_list_this = decode_forward_nodes(tmp_node_list)
+                        # 拉取失败或存在未解码节点时, 该转发保留原始CQ码兜底
+                        if (
+                            len(tmp_entry_list_this) == 0
+                            or len(tmp_entry_list_this) < count_forward_nodes(tmp_node_list)
+                        ):
+                            tmp_failed_forward_list.append(tmp_forward_id)
+                        tmp_entry_list.extend(tmp_entry_list_this)
                     if len(tmp_entry_list) > 0:
                         tmp_log_dict_list = []
+                        # 仅保留非转发文本与未解码转发的原始CQ码, 避免内容静默丢失
+                        tmp_fallback_message = remove_forward_code(message, tmp_failed_forward_list)
+                        tmp_fallback_message = tmp_fallback_message.strip()
+                        if tmp_fallback_message != '':
+                            tmp_log_dict_list.append(
+                                {
+                                    'time': log_dict['time'],
+                                    'type': funcType,
+                                    'message_id': message_id,
+                                    'message_ref_idx': message_ref_idx,
+                                    'deleted': False,
+                                    'dect': log_dict['dect'],
+                                    'sender': log_dict['sender'],
+                                    'message': safe_text(tmp_fallback_message),
+                                }
+                            )
                         for tmp_entry in tmp_entry_list:
                             tmp_entry_time = tmp_entry['time']
                             if tmp_entry_time is None:
@@ -567,8 +610,9 @@ def loggerEntry(event, funcType, sender, dectData, message):
                                 {
                                     'time': tmp_entry_time,
                                     'type': 'recv',
-                                    'message_id': None,
-                                    'message_ref_idx': None,
+                                    # 继承原消息标识, 保证引用功能可用且撤回可覆盖转写内容
+                                    'message_id': message_id,
+                                    'message_ref_idx': message_ref_idx,
                                     'deleted': False,
                                     'dect': {
                                         'host_id': host_id,
@@ -779,7 +823,9 @@ def get_last_message_id(log_file_path):
                     try:
                         log_entry = json.loads(line.strip())
                         if not log_entry.get('deleted', False) and 'message_id' in log_entry:
-                            last_message_id = log_entry['message_id']
+                            # 跳过无消息标识的合成条目(如历史版本写入的合并转发转写记录)
+                            if log_entry['message_id'] is not None:
+                                last_message_id = log_entry['message_id']
                     except Exception:
                         continue
         except Exception:
@@ -796,7 +842,11 @@ def get_last_message_ref_idx(log_file_path):
                 for line in f:
                     try:
                         log_entry = json.loads(line.strip())
-                        if not log_entry.get('deleted', False) and 'message_id' in log_entry:
+                        if (
+                            not log_entry.get('deleted', False)
+                            and 'message_id' in log_entry
+                            and log_entry['message_id'] is not None
+                        ):
                             last_message_ref_idx = log_entry.get('message_ref_idx', None)
                     except Exception:
                         continue
