@@ -344,6 +344,11 @@ def remove_forward_code(tmp_message, keep_forward_id_list=None):
     )
 
 
+def escape_forward_param(value):
+    """转义CQ码参数，避免媒体URL或卡片内容被拆成多个参数。"""
+    return str(value).replace('&', '&amp;').replace('[', '&#91;').replace(']', '&#93;').replace(',', '&#44;')
+
+
 def format_forward_segment(tmp_seg):
     """把单个消息段(dict或str)转为old_string(CQ码)文本"""
     if isinstance(tmp_seg, str):
@@ -357,23 +362,22 @@ def format_forward_segment(tmp_seg):
     if tmp_type == 'text' or (tmp_type is None and 'text' in tmp_data):
         return str(tmp_data.get('text', ''))
     if tmp_type == 'at':
-        return '[CQ:at,qq=%s]' % tmp_data.get('qq', tmp_data.get('id', 'all'))
+        return '[CQ:at,qq=%s]' % escape_forward_param(tmp_data.get('qq', tmp_data.get('id', 'all')))
     if tmp_type == 'face':
-        return '[CQ:face,id=%s]' % tmp_data.get('id', '0')
-    if tmp_type in ['image']:
-        return '[CQ:image,file=%s]' % tmp_data.get('file', tmp_data.get('file_id', tmp_data.get('uri', '')))
-    if tmp_type in ['record', 'voice', 'audio']:
-        return '[CQ:record,file=%s]' % tmp_data.get('file', tmp_data.get('file_id', tmp_data.get('uri', '')))
-    if tmp_type == 'video':
-        return '[CQ:video,file=%s]' % tmp_data.get('file', tmp_data.get('file_id', tmp_data.get('uri', '')))
+        return '[CQ:face,id=%s]' % escape_forward_param(tmp_data.get('id', '0'))
+    if tmp_type in ['image', 'record', 'voice', 'audio', 'video']:
+        # OneBot的file可能只是文件名，优先保留可供日志渲染器读取的URL。
+        tmp_file = get_forward_node_field(tmp_data, ['url', 'file', 'file_id', 'uri'])
+        tmp_cq_type = 'record' if tmp_type in ['voice', 'audio'] else tmp_type
+        return '[CQ:%s,file=%s]' % (tmp_cq_type, escape_forward_param(tmp_file if tmp_file is not None else ''))
     if tmp_type == 'reply':
-        return '[CQ:reply,id=%s]' % tmp_data.get('id', '')
+        return '[CQ:reply,id=%s]' % escape_forward_param(tmp_data.get('id', ''))
     if tmp_type == 'forward':
-        return '[CQ:forward,id=%s]' % tmp_data.get('id', tmp_data.get('forward_id', ''))
+        return '[CQ:forward,id=%s]' % escape_forward_param(tmp_data.get('id', tmp_data.get('forward_id', '')))
     if tmp_type == 'json':
-        return '[CQ:json,data=%s]' % tmp_data.get('data', '')
+        return '[CQ:json,data=%s]' % escape_forward_param(tmp_data.get('data', ''))
     if tmp_type == 'xml':
-        return '[CQ:xml,data=%s]' % tmp_data.get('data', '')
+        return '[CQ:xml,data=%s]' % escape_forward_param(tmp_data.get('data', ''))
     if tmp_type is None:
         return str(tmp_data)
     return '[CQ:%s]' % tmp_type
@@ -399,7 +403,10 @@ def get_forward_node_list(plugin_event, forward_id):
         return None
     if not tmp_res.get('active', False):
         return None
-    tmp_messages = tmp_res.get('data', {}).get('messages', None)
+    tmp_data = tmp_res.get('data')
+    if not isinstance(tmp_data, dict):
+        return None
+    tmp_messages = tmp_data.get('messages')
     if isinstance(tmp_messages, list) and len(tmp_messages) > 0:
         return tmp_messages
     return None
@@ -408,7 +415,7 @@ def get_forward_node_list(plugin_event, forward_id):
 def get_forward_node_field(tmp_data, key_list):
     """按优先级从节点数据中取第一个非空字段"""
     for key_this in key_list:
-        if key_this in tmp_data and tmp_data[key_this] is not None:
+        if key_this in tmp_data and tmp_data[key_this] is not None and tmp_data[key_this] != '':
             return tmp_data[key_this]
     return None
 
@@ -426,8 +433,18 @@ def decode_forward_nodes(tmp_node_list):
             tmp_node_data = tmp_node.get('data')
             if not isinstance(tmp_node_data, dict):
                 tmp_node_data = tmp_node
-            tmp_user_id = get_forward_node_field(tmp_node_data, ['user_id', 'uin', 'uid', 'id'])
+            tmp_sender = tmp_node_data.get('sender')
+            if not isinstance(tmp_sender, dict):
+                tmp_sender = {}
+            # 官bot使用node.data的扁平字段，NapCat/LLBot使用sender对象。
+            tmp_user_id = get_forward_node_field(tmp_sender, ['user_id', 'uin', 'uid', 'id'])
+            if tmp_user_id is None:
+                tmp_user_id = get_forward_node_field(tmp_node_data, ['user_id', 'uin', 'uid'])
+            if tmp_user_id is None:
+                tmp_user_id = get_forward_node_field(tmp_node_data, ['id'])
             tmp_name = get_forward_node_field(tmp_node_data, ['nickname', 'name', 'sender_name', 'user_name'])
+            if tmp_name is None:
+                tmp_name = get_forward_node_field(tmp_sender, ['card', 'nickname', 'name'])
             tmp_content = get_forward_node_field(tmp_node_data, ['content', 'message', 'text', 'segments', 'msg'])
             tmp_time = get_forward_node_field(tmp_node_data, ['time'])
             if tmp_content is None:
@@ -451,6 +468,18 @@ def decode_forward_nodes(tmp_node_list):
             )
         except Exception:
             continue
+    # 自定义转发可能让不同昵称共用同一个QQ号；缺失ID也不能统一归入-1。
+    tmp_names_by_id = {}
+    for tmp_entry in tmp_res:
+        tmp_names_by_id.setdefault(str(tmp_entry['user_id']), set()).add(tmp_entry['name'])
+    for tmp_entry in tmp_res:
+        tmp_source_id = tmp_entry['user_id']
+        if str(tmp_source_id) in ['-1', '0'] or len(tmp_names_by_id[str(tmp_source_id)]) > 1:
+            # 虚拟ID附加明确后缀，原始日志和导出日志均保留完整标识。
+            tmp_identity = json.dumps([str(tmp_source_id), tmp_entry['name']], ensure_ascii=True)
+            tmp_virtual_id = uuid.uuid5(uuid.NAMESPACE_URL, 'OlivaDiceLogger.forward:' + tmp_identity)
+            tmp_entry['source_user_id'] = tmp_source_id
+            tmp_entry['user_id'] = '900%017dVIRTUALID' % (tmp_virtual_id.int % (10 ** 17))
     return tmp_res
 
 
@@ -606,6 +635,13 @@ def loggerEntry(event, funcType, sender, dectData, message):
                             tmp_entry_time = tmp_entry['time']
                             if tmp_entry_time is None:
                                 tmp_entry_time = int(time.mktime(time.localtime()))
+                            tmp_entry_sender = {
+                                'id': tmp_entry['user_id'],
+                                'name': tmp_entry['name'],
+                            }
+                            if 'source_user_id' in tmp_entry:
+                                tmp_entry_sender['id_type'] = 'forward_virtual'
+                                tmp_entry_sender['source_id'] = tmp_entry['source_user_id']
                             tmp_log_dict_list.append(
                                 {
                                     'time': tmp_entry_time,
@@ -619,10 +655,7 @@ def loggerEntry(event, funcType, sender, dectData, message):
                                         'group_id': group_id,
                                         'user_id': tmp_entry['user_id'],
                                     },
-                                    'sender': {
-                                        'id': tmp_entry['user_id'],
-                                        'name': tmp_entry['name'],
-                                    },
+                                    'sender': tmp_entry_sender,
                                     'message': tmp_entry['message'],
                                 }
                             )
@@ -777,9 +810,11 @@ def releaseLogFile(logName, total_duration=0, temp=False):
                         continue
                     if tmp_dataLog_json.get('type') == 'log_total_duration':
                         continue
+                    tmp_sender_name = str(tmp_dataLog_json['sender']['name'])
+                    tmp_sender_id = str(tmp_dataLog_json['sender']['id'])
                     res_logFile_str += '%s(%s) %s\n%s\n' % (
-                        str(tmp_dataLog_json['sender']['name']),
-                        str(tmp_dataLog_json['sender']['id']),
+                        tmp_sender_name,
+                        tmp_sender_id,
                         str(time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(tmp_dataLog_json['time']))),
                         str(tmp_dataLog_json['message']),
                     )
