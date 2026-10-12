@@ -26,9 +26,12 @@ import glob
 import traceback
 import threading
 import requests as req
+from contextlib import contextmanager
 from functools import wraps
 
 gLoggerIOLockMap = {}
+gLoggerEntryQueueMap = {}
+gLoggerEntryQueueLock = threading.Lock()
 
 
 def safe_text(value):
@@ -490,6 +493,33 @@ def count_forward_nodes(tmp_node_list):
     return len(tmp_node_list)
 
 
+@contextmanager
+def ordered_log_entry(data_log_file):
+    """同一日志按进入队列的顺序完成拉取、解码和整批写入。"""
+    with gLoggerEntryQueueLock:
+        if data_log_file not in gLoggerEntryQueueMap:
+            gLoggerEntryQueueMap[data_log_file] = {
+                'condition': threading.Condition(),
+                'next_ticket': 0,
+                'serving': 0,
+            }
+        queue = gLoggerEntryQueueMap[data_log_file]
+        # 分配序号与获取队列同步，避免新线程抢先处理。
+        ticket = queue['next_ticket']
+        queue['next_ticket'] += 1
+    condition = queue['condition']
+    with condition:
+        while ticket != queue['serving']:
+            condition.wait()
+    try:
+        yield
+    finally:
+        # 拉取或写入异常也须放行后续消息，文件锁仅用于实际读写。
+        with condition:
+            queue['serving'] += 1
+            condition.notify_all()
+
+
 def write_log_entry(data_log_file, log_dict):
     """线程安全地追加一条日志记录"""
     if data_log_file not in gLoggerIOLockMap:
@@ -590,77 +620,78 @@ def loggerEntry(event, funcType, sender, dectData, message):
             dataLogPath = OlivaDiceLogger.data.dataLogPath
             dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, tmp_logName)
 
-            # 合并转发转写: 群开启logForward开关时, 把合并转发记录转成正常的人物和消息写入
-            tmp_log_dict_list = [log_dict]
-            if funcType == 'recv' and len(extract_forward_id_list(message)) > 0:
-                log_forward = OlivaDiceCore.userConfig.getUserConfigByKey(
-                    userId=tmp_hagID,
-                    userType='group',
-                    platform=event.platform['platform'],
-                    userConfigKey='logForward',
-                    botHash=event.bot_info.hash,
-                )
-                if log_forward:
-                    tmp_entry_list = []
-                    tmp_failed_forward_list = []
-                    for tmp_forward_id in extract_forward_id_list(message):
-                        tmp_node_list = get_forward_node_list(event, tmp_forward_id)
-                        tmp_entry_list_this = decode_forward_nodes(tmp_node_list)
-                        # 拉取失败或存在未解码节点时, 该转发保留原始CQ码兜底
-                        if (
-                            len(tmp_entry_list_this) == 0
-                            or len(tmp_entry_list_this) < count_forward_nodes(tmp_node_list)
-                        ):
-                            tmp_failed_forward_list.append(tmp_forward_id)
-                        tmp_entry_list.extend(tmp_entry_list_this)
-                    if len(tmp_entry_list) > 0:
-                        tmp_log_dict_list = []
-                        # 仅保留非转发文本与未解码转发的原始CQ码, 避免内容静默丢失
-                        tmp_fallback_message = remove_forward_code(message, tmp_failed_forward_list)
-                        tmp_fallback_message = tmp_fallback_message.strip()
-                        if tmp_fallback_message != '':
-                            tmp_log_dict_list.append(
-                                {
-                                    'time': log_dict['time'],
-                                    'type': funcType,
-                                    'message_id': message_id,
-                                    'message_ref_idx': message_ref_idx,
-                                    'deleted': False,
-                                    'dect': log_dict['dect'],
-                                    'sender': log_dict['sender'],
-                                    'message': safe_text(tmp_fallback_message),
+            with ordered_log_entry(dataLogFile):
+                # 合并转发转写: 群开启logForward开关时, 把合并转发记录转成正常的人物和消息写入
+                tmp_log_dict_list = [log_dict]
+                if funcType == 'recv' and len(extract_forward_id_list(message)) > 0:
+                    log_forward = OlivaDiceCore.userConfig.getUserConfigByKey(
+                        userId=tmp_hagID,
+                        userType='group',
+                        platform=event.platform['platform'],
+                        userConfigKey='logForward',
+                        botHash=event.bot_info.hash,
+                    )
+                    if log_forward:
+                        tmp_entry_list = []
+                        tmp_failed_forward_list = []
+                        for tmp_forward_id in extract_forward_id_list(message):
+                            tmp_node_list = get_forward_node_list(event, tmp_forward_id)
+                            tmp_entry_list_this = decode_forward_nodes(tmp_node_list)
+                            # 拉取失败或存在未解码节点时, 该转发保留原始CQ码兜底
+                            if (
+                                len(tmp_entry_list_this) == 0
+                                or len(tmp_entry_list_this) < count_forward_nodes(tmp_node_list)
+                            ):
+                                tmp_failed_forward_list.append(tmp_forward_id)
+                            tmp_entry_list.extend(tmp_entry_list_this)
+                        if len(tmp_entry_list) > 0:
+                            tmp_log_dict_list = []
+                            # 仅保留非转发文本与未解码转发的原始CQ码, 避免内容静默丢失
+                            tmp_fallback_message = remove_forward_code(message, tmp_failed_forward_list)
+                            tmp_fallback_message = tmp_fallback_message.strip()
+                            if tmp_fallback_message != '':
+                                tmp_log_dict_list.append(
+                                    {
+                                        'time': log_dict['time'],
+                                        'type': funcType,
+                                        'message_id': message_id,
+                                        'message_ref_idx': message_ref_idx,
+                                        'deleted': False,
+                                        'dect': log_dict['dect'],
+                                        'sender': log_dict['sender'],
+                                        'message': safe_text(tmp_fallback_message),
+                                    }
+                                )
+                            for tmp_entry in tmp_entry_list:
+                                tmp_entry_time = tmp_entry['time']
+                                if tmp_entry_time is None:
+                                    tmp_entry_time = int(time.mktime(time.localtime()))
+                                tmp_entry_sender = {
+                                    'id': tmp_entry['user_id'],
+                                    'name': tmp_entry['name'],
                                 }
-                            )
-                        for tmp_entry in tmp_entry_list:
-                            tmp_entry_time = tmp_entry['time']
-                            if tmp_entry_time is None:
-                                tmp_entry_time = int(time.mktime(time.localtime()))
-                            tmp_entry_sender = {
-                                'id': tmp_entry['user_id'],
-                                'name': tmp_entry['name'],
-                            }
-                            if 'source_user_id' in tmp_entry:
-                                tmp_entry_sender['id_type'] = 'forward_virtual'
-                                tmp_entry_sender['source_id'] = tmp_entry['source_user_id']
-                            tmp_log_dict_list.append(
-                                {
-                                    'time': tmp_entry_time,
-                                    'type': 'recv',
-                                    # 继承原消息标识, 保证引用功能可用且撤回可覆盖转写内容
-                                    'message_id': message_id,
-                                    'message_ref_idx': message_ref_idx,
-                                    'deleted': False,
-                                    'dect': {
-                                        'host_id': host_id,
-                                        'group_id': group_id,
-                                        'user_id': tmp_entry['user_id'],
-                                    },
-                                    'sender': tmp_entry_sender,
-                                    'message': tmp_entry['message'],
-                                }
-                            )
-            for tmp_log_dict_this in tmp_log_dict_list:
-                write_log_entry(dataLogFile, tmp_log_dict_this)
+                                if 'source_user_id' in tmp_entry:
+                                    tmp_entry_sender['id_type'] = 'forward_virtual'
+                                    tmp_entry_sender['source_id'] = tmp_entry['source_user_id']
+                                tmp_log_dict_list.append(
+                                    {
+                                        'time': tmp_entry_time,
+                                        'type': 'recv',
+                                        # 继承原消息标识, 保证引用功能可用且撤回可覆盖转写内容
+                                        'message_id': message_id,
+                                        'message_ref_idx': message_ref_idx,
+                                        'deleted': False,
+                                        'dect': {
+                                            'host_id': host_id,
+                                            'group_id': group_id,
+                                            'user_id': tmp_entry['user_id'],
+                                        },
+                                        'sender': tmp_entry_sender,
+                                        'message': tmp_entry['message'],
+                                    }
+                                )
+                for tmp_log_dict_this in tmp_log_dict_list:
+                    write_log_entry(dataLogFile, tmp_log_dict_this)
     pass
 
 
