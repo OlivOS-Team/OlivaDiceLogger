@@ -138,53 +138,61 @@ dictTValue = {
 }
 
 dictHelpDocTemp = {
-    'log': """跑团日志记录
-.log on (名字) 开始记录日志
+    'log': """跑团日志记录（常用功能）
+.log on (名字) 开始或继续记录日志
 .log off (名字) 暂停记录指定日志或当前日志
-.log end (名字) 完成记录并发送日志文件
+.log end (名字) 完成记录并上传日志
 .log info (名字) 查看指定日志或当前日志的状态
-.log temp (名字) 临时上传指定的日志
-    临时上传日志不影响记录
-.log stop (名字) 强制停止日志不上传
+.log temp (名字) 临时上传日志，不影响记录
+.log list 查看本群日志列表
 .log set [名字] 切换活跃日志
 .log rename [新名字](/旧名字) 重命名活跃日志或指定日志
-    若重命名指定日志，新旧名字用 '/' 分隔
-.log list 查看本群日志列表
-.log upload [UUID] 手动上传指定UUID的日志
-    指定UUID的日志必须为已经end/stop的日志
+    重命名指定日志时，新旧名字用 '/' 分隔
+.log quote (名字) 引用日志结束消息（仅QQ）
+
+以上指令仅群聊可用，日志默认名称为 default
+日志上传失败时，可联系后台管理索取
+
+高级功能请输入 .help logex
+设置项目请输入 .help logcfg（或 .help logconfig）""",
+    'logex': """跑团日志记录（高级功能）
+.log stop (名字) 强制停止日志，不上传
+.log upload [UUID] 手动上传已 end/stop 的日志
 .log build [UUID] 强制为指定UUID的日志生成trpglog文件
-.log quote (名字) 引用日志
-    若平台不为QQ则无法引用
-.log quote on/off 开启/关闭自动引用上次日志
-.log forward on/off 开启/关闭合并转发转写
-    开启后日志记录时将把合并转发消息
-    转成正常的消息记录写入日志
-.log pcname on/off 开启/关闭日志使用角色卡名字
-    开启后日志记录时将使用发送者的角色卡名字
 .log stat (UUID) (all/@用户) 查看日志统计数据
     不带参数查看当前活跃日志中自己的数据
-.log code [UUID] (群号) (平台) (end) 生成跨平台续接码(仅Master)
-    群号为来源群，不填默认当前群
-    需该群有该UUID的日志记录即可，日志可已结束
-    UUID后直接加 end 可跳过群校验(用于已 end 的日志)
-    可用 .uinfo group 查看群号/频道号(hag_id)和平台
+.log code [UUID] (群号) (平台) (end) 生成跨平台续接码（仅Master）
+    来源群省略时使用当前群，需有该UUID的日志记录
+    UUID后直接加 end 可跳过群校验（用于已 end 的日志）
+    用 .uinfo group 查看群号/频道号(hag_id)和平台
 .log resume [UUID] [续接码] 跨平台续接日志
-    别名: .log continue
-    在任意群使用，无需身份验证
+    别名: .log continue；在任意群使用，无需身份验证
+    续接码一次性，使用后失效
 
-私聊可用(不依赖当前群会话):
-.log upload [UUID]
-.log build [UUID]
-.log code [UUID] (群号) (平台) (end)
-.log stat [UUID] (all/@用户)
-其余 .log 指令仅群聊可用
+私聊可用: upload/build/code/stat，均需指定UUID
+其余指令仅群聊可用
 
-日志的默认名称为 default
-日志上传存在失败可能，届时请联系后台管理索取""",
+常用功能请输入 .help log
+设置项目请输入 .help logcfg""",
+    'logconfig': """跑团日志记录（设置项目）
+.log quote on/off 开启/关闭自动引用上次结束日志
+    仅QQ平台支持引用
+.log forward on/off 开启/关闭合并转发转写
+    开启后，将合并转发的发送者和正文写入日志
+.log pcname on/off 开启/关闭日志使用角色卡名字
+    开启后，使用发送者在本群选中的角色卡名字
+
+以上设置仅对当前群生效，指令仅群聊可用
+本帮助别名: .help logcfg / .help logex2
+
+常用功能请输入 .help log
+高级功能请输入 .help logex""",
     'OlivaDiceLogger': """[OlivaDiceLogger]
 OlivaDice日志模块
 本模块为青果跑团掷骰机器人(OlivaDice)跑团日志模块，集成与跑团相关的跑团日志记录功能。
 核心开发者: lunzhiPenxil仑质
 注: 本模块为可选重要模块。""",
     '日志': '&log',
+    'logcfg': '&logconfig',
+    'logex2': '&logconfig',
 }
