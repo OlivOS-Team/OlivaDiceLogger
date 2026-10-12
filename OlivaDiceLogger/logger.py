@@ -30,8 +30,11 @@ from contextlib import contextmanager
 from functools import wraps
 
 gLoggerIOLockMap = {}
-gLoggerEntryQueueMap = {}
+gLoggerEntryPending = {}
 gLoggerEntryQueueLock = threading.Lock()
+gLoggerEntryCondition = threading.Condition(gLoggerEntryQueueLock)
+gLoggerForwardFetchSlots = threading.BoundedSemaphore(4)
+gLoggerForwardFetchTimeout = 30.0
 
 
 def safe_text(value):
@@ -212,6 +215,14 @@ def loggerEntryLazyReply(self_arg):
 # 记录日志时撤回添加撤回标记
 def handle_message_recall(event):
     try:
+        with pending_log_entry() as entry:
+            _handle_message_recall(event, entry)
+    except Exception:
+        traceback.print_exc()
+
+
+def _handle_message_recall(event, entry):
+    try:
         message_id = event.data.message_id
         group_id = event.data.group_id
         botHash = event.bot_info.hash
@@ -256,29 +267,30 @@ def handle_message_recall(event):
         tmp_logName = f'log_{log_uuid}_{log_name}'
         log_file = f'{OlivaDiceLogger.data.dataPath}{OlivaDiceLogger.data.dataLogPath}/{tmp_logName}.olivadicelog'
 
-        if not os.path.exists(log_file):
-            return
+        with ordered_log_entry(log_file, entry):
+            if not os.path.exists(log_file):
+                return
 
-        if log_file not in gLoggerIOLockMap:
-            gLoggerIOLockMap[log_file] = threading.Lock()
+            if log_file not in gLoggerIOLockMap:
+                gLoggerIOLockMap[log_file] = threading.Lock()
 
-        with gLoggerIOLockMap[log_file]:
-            updated_lines = []
-            modified = False
-            with open(log_file, 'r', encoding='utf-8') as f:
-                for line in f:
-                    try:
-                        log_entry = json.loads(line.strip())
-                        if str(log_entry.get('message_id')) == str(message_id):
-                            log_entry['deleted'] = True
-                            modified = True
-                        updated_lines.append(json.dumps(log_entry, ensure_ascii=False) + '\n')
-                    except json.JSONDecodeError:
-                        continue
+            with gLoggerIOLockMap[log_file]:
+                updated_lines = []
+                modified = False
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        try:
+                            log_entry = json.loads(line.strip())
+                            if str(log_entry.get('message_id')) == str(message_id):
+                                log_entry['deleted'] = True
+                                modified = True
+                            updated_lines.append(json.dumps(log_entry, ensure_ascii=False) + '\n')
+                        except json.JSONDecodeError:
+                            continue
 
-            if modified:
-                with open(log_file, 'w', encoding='utf-8') as f:
-                    f.writelines(updated_lines)
+                if modified:
+                    with open(log_file, 'w', encoding='utf-8') as f:
+                        f.writelines(updated_lines)
 
     except Exception:
         traceback.print_exc()
@@ -395,13 +407,34 @@ def format_forward_content(tmp_content):
     return str(tmp_content)
 
 
-def get_forward_node_list(plugin_event, forward_id):
-    """通过平台接口拉取合并转发节点列表，失败时返回None"""
-    tmp_res = None
-    try:
-        tmp_res = plugin_event.get_forward_msg(forward_id)
-    except Exception:
+def get_forward_node_list(plugin_event, forward_id, deadline=None):
+    """限时拉取转发节点，超时或拉取并发已满时保留原始转发码。"""
+    if deadline is None:
+        deadline = time.monotonic() + gLoggerForwardFetchTimeout
+    remaining = deadline - time.monotonic()
+    if remaining <= 0 or not gLoggerForwardFetchSlots.acquire(blocking=False):
         return None
+    completed = threading.Event()
+    result = {}
+
+    def fetch():
+        try:
+            result['response'] = plugin_event.get_forward_msg(forward_id)
+        except Exception:
+            pass
+        finally:
+            gLoggerForwardFetchSlots.release()
+            completed.set()
+
+    try:
+        threading.Thread(target=fetch, daemon=True).start()
+    except Exception:
+        gLoggerForwardFetchSlots.release()
+        return None
+    if not completed.wait(max(0.0, deadline - time.monotonic())):
+        return None
+    # 超时后的后台结果不会补写日志，也不会改变已放行消息的顺序。
+    tmp_res = result.get('response')
     if not isinstance(tmp_res, dict):
         return None
     if not tmp_res.get('active', False):
@@ -494,30 +527,43 @@ def count_forward_nodes(tmp_node_list):
 
 
 @contextmanager
-def ordered_log_entry(data_log_file):
-    """同一日志按进入队列的顺序完成拉取、解码和整批写入。"""
-    with gLoggerEntryQueueLock:
-        if data_log_file not in gLoggerEntryQueueMap:
-            gLoggerEntryQueueMap[data_log_file] = {
-                'condition': threading.Condition(),
-                'next_ticket': 0,
-                'serving': 0,
-            }
-        queue = gLoggerEntryQueueMap[data_log_file]
-        # 分配序号与获取队列同步，避免新线程抢先处理。
-        ticket = queue['next_ticket']
-        queue['next_ticket'] += 1
-    condition = queue['condition']
-    with condition:
-        while ticket != queue['serving']:
-            condition.wait()
+def pending_log_entry():
+    """在解析配置前登记入口顺序，仅保留尚未结束的记录。"""
+    entry = object()
+    with gLoggerEntryCondition:
+        gLoggerEntryPending[entry] = None
     try:
-        yield
+        yield entry
     finally:
-        # 拉取或写入异常也须放行后续消息，文件锁仅用于实际读写。
-        with condition:
-            queue['serving'] += 1
-            condition.notify_all()
+        # 等待、解析和写入异常都释放登记，不保留闲置日志的状态。
+        with gLoggerEntryCondition:
+            del gLoggerEntryPending[entry]
+            gLoggerEntryCondition.notify_all()
+
+
+@contextmanager
+def ordered_log_entry(data_log_file, entry=None):
+    """同一日志按入口顺序处理，目标已明确的不同日志可并行。"""
+    if entry is None:
+        with pending_log_entry() as entry:
+            with ordered_log_entry(data_log_file, entry):
+                yield
+        return
+
+    def ready():
+        for pending_entry, pending_file in gLoggerEntryPending.items():
+            if pending_entry is entry:
+                return True
+            # 较早的入口还未解析出目标时，先等其确认是否属于同一日志。
+            if pending_file is None or pending_file == data_log_file:
+                return False
+        return False
+
+    with gLoggerEntryCondition:
+        gLoggerEntryPending[entry] = data_log_file
+        gLoggerEntryCondition.notify_all()
+        gLoggerEntryCondition.wait_for(ready)
+    yield
 
 
 def write_log_entry(data_log_file, log_dict):
@@ -534,6 +580,12 @@ def write_log_entry(data_log_file, log_dict):
 
 
 def loggerEntry(event, funcType, sender, dectData, message):
+    # 在读取配置和角色卡前登记，普通消息和撤回共享日志入口顺序。
+    with pending_log_entry() as entry:
+        _loggerEntry(event, funcType, sender, dectData, message, entry)
+
+
+def _loggerEntry(event, funcType, sender, dectData, message, entry):
     [host_id, group_id, user_id] = dectData
     tmp_hagID = None
     if host_id is not None and group_id is not None:
@@ -620,7 +672,7 @@ def loggerEntry(event, funcType, sender, dectData, message):
             dataLogPath = OlivaDiceLogger.data.dataLogPath
             dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, tmp_logName)
 
-            with ordered_log_entry(dataLogFile):
+            with ordered_log_entry(dataLogFile, entry):
                 # 合并转发转写: 群开启logForward开关时, 把合并转发记录转成正常的人物和消息写入
                 tmp_log_dict_list = [log_dict]
                 if funcType == 'recv' and len(extract_forward_id_list(message)) > 0:
@@ -634,8 +686,10 @@ def loggerEntry(event, funcType, sender, dectData, message):
                     if log_forward:
                         tmp_entry_list = []
                         tmp_failed_forward_list = []
+                        # 一条消息中的多个转发共用预算，避免超时逐个累加。
+                        tmp_forward_deadline = time.monotonic() + gLoggerForwardFetchTimeout
                         for tmp_forward_id in extract_forward_id_list(message):
-                            tmp_node_list = get_forward_node_list(event, tmp_forward_id)
+                            tmp_node_list = get_forward_node_list(event, tmp_forward_id, tmp_forward_deadline)
                             tmp_entry_list_this = decode_forward_nodes(tmp_node_list)
                             # 拉取失败或存在未解码节点时, 该转发保留原始CQ码兜底
                             if (
