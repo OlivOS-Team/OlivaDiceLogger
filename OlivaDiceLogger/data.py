@@ -14,11 +14,14 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 @Desc      :   None
 """
 
-OlivaDiceLogger_ver = '3.0.49'
-OlivaDiceLogger_svn = 57
+import OlivaDiceCore
+
+OlivaDiceLogger_ver = '3.0.50'
+OlivaDiceLogger_svn = 58
 OlivaDiceLogger_ver_short = '%s(%s)' % (str(OlivaDiceLogger_ver), str(OlivaDiceLogger_svn))
 
-dataPath = './plugin/data/OlivaDice/unity'
+# 日志放在 OlivaDiceCore 数据目录的 unity 下，跟随 Core 的 dataDirRoot
+dataPath = OlivaDiceCore.data.dataDirRoot + '/unity'
 dataLogPath = '/logger'
 dataCompatibilityPath = '/logger_compatibility'
 dataCompatibilityFlagFile = 'compatibility_done'
