@@ -16,8 +16,8 @@ _  / / /_  /  __  / __ | / /__  /| |_  / / /__  / _  /    __  __/
 
 import OlivaDiceCore
 
-OlivaDiceLogger_ver = '3.0.50'
-OlivaDiceLogger_svn = 58
+OlivaDiceLogger_ver = '3.0.53'
+OlivaDiceLogger_svn = 61
 OlivaDiceLogger_ver_short = '%s(%s)' % (str(OlivaDiceLogger_ver), str(OlivaDiceLogger_svn))
 
 # 日志放在 OlivaDiceCore 数据目录的 unity 下，跟随 Core 的 dataDirRoot
