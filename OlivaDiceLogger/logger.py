@@ -912,20 +912,74 @@ def releaseLogFile(logName, total_duration=0, temp=False):
     return False
 
 
-def uploadLogFile(logName, timeout=60):
-    dataPath = OlivaDiceLogger.data.dataPath
-    dataLogPath = OlivaDiceLogger.data.dataLogPath
-    dataLogFile = '%s%s/%s.olivadicelog' % (dataPath, dataLogPath, logName)  # NOQA: F841
-    dataLogFile_1 = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
-    tmp_dataLogFile = None
-    with open(dataLogFile_1, 'rb') as dataLogFile_f:
-        tmp_dataLogFile = dataLogFile_f.read()
-        url = OlivaDiceLogger.data.dataLogUpload
-        files = {'file': tmp_dataLogFile}
-        data = {'name': logName}
-        response = req.request(  # NOQA: F841
-            'POST', url, files=files, data=data, proxies=OlivaDiceCore.webTool.get_system_proxy(), timeout=timeout
-        )
+def uploadLogFile(logName, timeout=60, content=None):
+    if content is None:
+        dataPath = OlivaDiceLogger.data.dataPath
+        dataLogPath = OlivaDiceLogger.data.dataLogPath
+        dataLogFile = '%s%s/%s.trpglog' % (dataPath, dataLogPath, logName)
+        with open(dataLogFile, 'rb') as dataLogFile_f:
+            content = dataLogFile_f.read()
+    url = OlivaDiceLogger.data.dataLogUpload
+    files = {'file': content}
+    data = {'name': logName}
+    return req.request(
+        'POST', url, files=files, data=data, proxies=OlivaDiceCore.webTool.get_system_proxy(),
+        timeout=timeout, allow_redirects=False
+    )
+
+
+def get_upload_timeout(bot_hash=None):
+    # 优先读 console 注入值；未注入（None）时回落插件模板默认 60 秒。
+    value = None
+    try:
+        value = OlivaDiceCore.console.getConsoleSwitchByHash('logUploadTimeout', bot_hash)
+    except Exception:
+        value = None
+    if value is None:
+        template = getattr(OlivaDiceLogger.msgCustom, 'dictConsoleSwitchTemplate', {}) or {}
+        value = (template.get('default') or {}).get('defaultLogUploadTimeout', 60)
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        value = 60.0
+    return value if value > 0 else 60.0
+
+
+def upload_with_retry(logName, timeout=60, attempts=3, max_total_seconds=None):
+    """仅 HTTP 200 成功；默认最多尝试 3 次，间隔 1、2 秒，全部失败抛最后一次异常。
+
+    max_total_seconds 限制重试预算；requests 的单次超时不是严格的墙钟截止。
+    """
+    if timeout is None:
+        # console 未配置 logUploadTimeout 时返回 None；None 不能参与总预算比较，按默认 60 秒处理。
+        timeout = 60
+    deadline = None if max_total_seconds is None else time.monotonic() + max_total_seconds
+    dataLogFile = '%s%s/%s.trpglog' % (OlivaDiceLogger.data.dataPath, OlivaDiceLogger.data.dataLogPath, logName)
+    with open(dataLogFile, 'rb') as dataLogFile_f:
+        content = dataLogFile_f.read()
+
+    last_error = None
+    for attempt in range(attempts):
+        attempt_timeout = timeout
+        if deadline is not None:
+            attempt_timeout = min(timeout, deadline - time.monotonic())
+            if attempt_timeout < 1:
+                if last_error is not None:
+                    raise last_error
+                raise req.exceptions.Timeout('日志上传超出总时长预算')
+        try:
+            response = uploadLogFile(logName, timeout=attempt_timeout, content=content)
+            if response.status_code != 200:
+                raise req.exceptions.HTTPError(f'日志上传返回 HTTP {response.status_code}', response=response)
+            return response
+        except Exception as exc:
+            if attempt == attempts - 1:
+                raise
+            delay = 2 ** attempt
+            if deadline is not None and deadline - time.monotonic() - delay < 1:
+                raise
+            last_error = exc
+            time.sleep(delay)
 
 
 def releaseDir(dir_path):

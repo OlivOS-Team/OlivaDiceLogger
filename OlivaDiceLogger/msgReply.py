@@ -26,7 +26,6 @@ import uuid
 import json
 import glob
 import traceback
-import requests
 
 
 def unity_init(plugin_event, Proc):
@@ -227,7 +226,7 @@ def unity_reply(plugin_event, Proc):
                 log_files = [
                     f
                     for f in os.listdir(f'{dataPath}{dataLogPath}')
-                    if f.startswith(f'log_{log_uuid}_') and f.endswith('.trpglog')
+                    if f.startswith(f'log_{log_uuid}_') and f.endswith('.trpglog') and not f.endswith('_temp.trpglog')
                 ]
 
                 if log_files:
@@ -265,12 +264,23 @@ def unity_reply(plugin_event, Proc):
                 dictTValue['tLogTime'] = formatted_duration
 
                 # 获取上传超时配置
-                upload_timeout_seconds = OlivaDiceCore.console.getConsoleSwitchByHash(
-                    'logUploadTimeout', plugin_event.bot_info.hash
-                )
+                upload_timeout_seconds = OlivaDiceLogger.logger.get_upload_timeout(plugin_event.bot_info.hash)
 
                 try:
-                    OlivaDiceLogger.logger.uploadLogFile(tmp_logName, timeout=upload_timeout_seconds)
+                    OlivaDiceLogger.logger.upload_with_retry(tmp_logName, timeout=upload_timeout_seconds)
+                except Exception as exc:
+                    Proc.log(
+                        log_level=3,
+                        log_message=f'.log upload 上传失败（{tmp_logName}）：{type(exc).__name__}: {exc}',
+                        log_segment=[('OlivaDiceLogger', 'default')],
+                    )
+                    dictTValue['tLogName'] = log_name
+                    dictTValue['tLogUUID'] = log_uuid
+                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                        dictStrCustom['strLoggerLogUploadFailed'], dictTValue
+                    )
+                    replyMsg(plugin_event, tmp_reply_str)
+                else:
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = log_uuid
                     encoded_logName = urllib.parse.quote(tmp_logName)
@@ -279,14 +289,6 @@ def unity_reply(plugin_event, Proc):
                         dictStrCustom['strLoggerLogUploadSuccess'], dictTValue
                     )
                     replyMsg(plugin_event, tmp_reply_str)
-                except Exception:
-                    dictTValue['tLogName'] = log_name
-                    dictTValue['tLogUUID'] = log_uuid
-                    tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                        dictStrCustom['strLoggerLogUploadFailed'], dictTValue
-                    )
-                    replyMsg(plugin_event, tmp_reply_str)
-                    traceback.print_exc()
                 return
             elif isMatchWordStart(tmp_reast_str, ['build', 'gene']):
                 flag_log_private_ok = True
@@ -1438,7 +1440,6 @@ def unity_reply(plugin_event, Proc):
                 replyMsg(plugin_event, tmp_reply_str)
 
                 upload_success = False
-                upload_timeout = False
                 try:
                     if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration):
                         dictTValue['tLogName'] = log_name
@@ -1449,30 +1450,30 @@ def unity_reply(plugin_event, Proc):
                         replyMsg(plugin_event, tmp_reply_str)
 
                         # 获取上传超时配置
-                        upload_timeout_seconds = OlivaDiceCore.console.getConsoleSwitchByHash(
-                            'logUploadTimeout', plugin_event.bot_info.hash
-                        )
+                        upload_timeout_seconds = OlivaDiceLogger.logger.get_upload_timeout(plugin_event.bot_info.hash)
 
                         try:
-                            OlivaDiceLogger.logger.uploadLogFile(tmp_logName, timeout=upload_timeout_seconds)
+                            OlivaDiceLogger.logger.upload_with_retry(
+                                tmp_logName, timeout=upload_timeout_seconds, max_total_seconds=90
+                            )
+                        except Exception as exc:
+                            Proc.log(
+                                log_level=3,
+                                log_message=f'.log end 上传失败（{tmp_logName}）：{type(exc).__name__}: {exc}',
+                                log_segment=[('OlivaDiceLogger', 'default')],
+                            )
+                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                                dictStrCustom['strLoggerLogUploadTimeout'], dictTValue
+                            )
+                            replyMsg(plugin_event, tmp_reply_str)
+                        else:
                             encoded_logName = urllib.parse.quote(tmp_logName)
                             dictTValue['tLogUrl'] = '%s%s' % (OlivaDiceLogger.data.dataLogPainterUrl, encoded_logName)
                             tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                                 dictStrCustom['strLoggerLogUrl'], dictTValue
                             )
                             replyMsg(plugin_event, tmp_reply_str)
-                            upload_success = True  # NOQA: F841
-                        except (
-                            requests.exceptions.Timeout,
-                            requests.exceptions.ReadTimeout,
-                            requests.exceptions.ConnectTimeout,
-                        ):
-                            # 上传超时，给出提示
-                            upload_timeout = True  # NOQA: F841
-                            tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                                dictStrCustom['strLoggerLogUploadTimeout'], dictTValue
-                            )
-                            replyMsg(plugin_event, tmp_reply_str)
+                            upload_success = True
 
                         # 为所有链接的bot删除日志名称相关配置（基于UUID）
                         current_uuid = log_name_dict.get(log_name)
@@ -1561,8 +1562,10 @@ def unity_reply(plugin_event, Proc):
                                     )
 
                         try:
-                            if plugin_event.platform['platform'] == 'kaiheila' and plugin_event.indeAPI.hasAPI(
-                                'create_message'
+                            if (
+                                upload_success
+                                and plugin_event.platform['platform'] == 'kaiheila'
+                                and plugin_event.indeAPI.hasAPI('create_message')
                             ):
                                 plugin_event.indeAPI.create_message(
                                     chat_type='group',
@@ -1625,7 +1628,8 @@ def unity_reply(plugin_event, Proc):
                                     ),
                                 )
                             if (
-                                plugin_event.platform['platform'] == 'qqGuild'
+                                upload_success
+                                and plugin_event.platform['platform'] == 'qqGuild'
                                 and plugin_event.indeAPI.hasAPI('create_markdown_message')
                             ):
                                 extend_data = plugin_event.data.extend
@@ -2185,12 +2189,22 @@ def unity_reply(plugin_event, Proc):
                 # 生成临时日志文件（添加 _temp 后缀）
                 if OlivaDiceLogger.logger.releaseLogFile(tmp_logName, total_duration, temp=True):
                     # 获取上传超时配置
-                    upload_timeout_seconds = OlivaDiceCore.console.getConsoleSwitchByHash(
-                        'logUploadTimeout', plugin_event.bot_info.hash
-                    )
+                    upload_timeout_seconds = OlivaDiceLogger.logger.get_upload_timeout(plugin_event.bot_info.hash)
 
                     try:
-                        OlivaDiceLogger.logger.uploadLogFile(tmp_logName + '_temp', timeout=upload_timeout_seconds)
+                        OlivaDiceLogger.logger.upload_with_retry(tmp_logName + '_temp', timeout=upload_timeout_seconds)
+                    except Exception as exc:
+                        Proc.log(
+                            log_level=3,
+                            log_message=f'.log temp 上传失败（{tmp_logName}）：{type(exc).__name__}: {exc}',
+                            log_segment=[('OlivaDiceLogger', 'default')],
+                        )
+                        dictTValue['tLogName'] = log_name
+                        dictTValue['tLogUUID'] = tmp_log_uuid
+                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
+                            dictStrCustom['strLoggerLogTempFailed'], dictTValue
+                        )
+                    else:
                         dictTValue['tLogName'] = log_name
                         dictTValue['tLogUUID'] = tmp_log_uuid
                         encoded_logName = urllib.parse.quote(tmp_logName)
@@ -2198,13 +2212,6 @@ def unity_reply(plugin_event, Proc):
                         tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
                             dictStrCustom['strLoggerLogTempSuccess'], dictTValue
                         )
-                    except Exception:
-                        dictTValue['tLogName'] = log_name
-                        dictTValue['tLogUUID'] = tmp_log_uuid
-                        tmp_reply_str = OlivaDiceCore.msgCustomManager.formatReplySTR(
-                            dictStrCustom['strLoggerLogTempFailed'], dictTValue
-                        )
-                        traceback.print_exc()
                 else:
                     dictTValue['tLogName'] = log_name
                     dictTValue['tLogUUID'] = tmp_log_uuid
